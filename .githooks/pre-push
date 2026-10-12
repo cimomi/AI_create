@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# 公开推送前的强制安全闸门。
+#
+# 扫「当前文件」+「全部历史 blob」——一次泄漏哪怕后来删掉了，只要进过提交
+# 就仍在 git 对象里、仍能通过 API 取到。
+#
+# 绕不过去：这是 git 在推送前自己调用的。除非显式 --no-verify，
+# 那属于故意绕过闸门，不应发生。
+set -uo pipefail
+ROOT="$(git rev-parse --show-toplevel)"
+exec python3 "$ROOT/scripts/audit.py"

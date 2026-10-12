@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# 提交前快检（不扫历史，快）。真正的拦截在 pre-push。
+set -uo pipefail
+ROOT="$(git rev-parse --show-toplevel)"
+exec python3 "$ROOT/scripts/audit.py" --no-history

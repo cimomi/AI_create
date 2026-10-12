@@ -1,16 +1,23 @@
-# 运行产物
+# 运行产物（工具运行会生成，其中可能含本机绝对路径）
+health-report.json
 __pycache__/
 *.pyc
-health-report.json
 
 # 编辑器与系统
 .DS_Store
 .vscode/
 .idea/
 
-# 本地验证记录（含机器相关信息，不入库）
-*.local.json
+# 密钥与凭证：这些永远不该入库
+.env
+.env.*
+*.pem
+*.key
+*.p12
+.netrc
+.git-credentials
 
-# 备份与恢复快照
+# 备份与快照
 update-backups/
 .recovery/
+*.local.json
