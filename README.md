@@ -33,14 +33,17 @@
 
 ### 推送前强制安全审计
 
-本仓库公开，**推送前自动运行安全审计**，不通过即拒绝。分三层，本地两层可以
-`--no-verify` 绕过，服务端 CI 不能：
+本仓库公开，**推送前自动运行安全审计**，不通过即拒绝：
 
-| 层 | 位置 | 范围 | 可否绕过 |
+| 层 | 时机 | 覆盖 | 能否阻止泄漏 |
 | --- | --- | --- | --- |
-| 1 | `.githooks/pre-commit` | 暂存区密钥 + 当前文件 | 可以 |
-| 2 | `.githooks/pre-push` | **全部历史**密钥 + 绝对路径等 | 可以 |
-| 3 | `.github/workflows/security.yml` | 同上，服务端 | **不可以** |
+| `.githooks/pre-commit` | 提交前 | 暂存区密钥 + 当前文件 | 能，可 `--no-verify` 绕过 |
+| `.githooks/pre-push` | 推送前 | **全部历史**密钥 + 绝对路径等 | 能，可 `--no-verify` 绕过 |
+| GitHub Actions CI | 推送**后** | 同上，服务端 | **不能**，只能发现与告警 |
+| GitHub Push Protection | 推送**时** | 平台已知凭证格式 | **能**，不可绕过 |
+
+> 注意：CI 在推送完成之后才运行，所以它拦不住泄漏本身——真正能在推送当时拒绝的
+> 是 GitHub 原生的 Push Protection（需管理员在 Settings → Code security 开启）。
 
 ```bash
 scripts/install-hooks.sh                  # 新克隆的机器执行一次
