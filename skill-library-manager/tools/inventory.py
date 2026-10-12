@@ -71,7 +71,7 @@ if __name__ == '__main__':
         for folder in sorted(root.iterdir()):
             if not folder.name.startswith('.') and (folder / 'SKILL.md').is_file():
                 records.append(inspect(source, folder))
-    output = ROOT / '.maintenance/inventory-before.json'
+    output = ROOT / '.maintenance/inventory.json'
     output.write_text(json.dumps(records, ensure_ascii=False, indent=2, default=str) + '\n')
     print(json.dumps({'counts': {s: sum(r['source'] == s for r in records) for s in SOURCES},
                       'bundles': len(records), 'unique_names': len({r['name'] for r in records}),

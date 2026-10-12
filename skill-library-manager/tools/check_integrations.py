@@ -12,8 +12,8 @@ Exit code: 0 = all passed, 1 = at least one error.
 Note: Codex `config.toml` is maintained by the Codex application itself. App
 upgrades rewrite the version string, browser service path, and UI preferences.
 This script therefore only verifies the skill-related fact (the entry
-directory); byte-level assertions on that file belong to the one-off migration
-record in the project notes.
+directory); asserting on the whole file would raise false alarms on every
+normal application upgrade.
 """
 import json
 import os
