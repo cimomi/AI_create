@@ -41,6 +41,11 @@ IGNORED_ENTRIES = {'.DS_Store', '.system', '.git', '.gitignore'}
 
 
 def check():
+    if not MANIFEST.is_file():
+        print(f'找不到 manifest：{MANIFEST}\n'
+              f'请把 SKILLS_ROOT 指向一个已初始化的 Skill 库，'
+              f'或先运行 .maintenance/inventory.py 生成清单。', file=sys.stderr)
+        raise SystemExit(2)
     manifest = json.loads(MANIFEST.read_text())
     entries, links = manifest['entries'], manifest['links']
     findings = collections.defaultdict(list)

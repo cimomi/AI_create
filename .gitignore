@@ -1,7 +1,7 @@
 # 运行产物
 __pycache__/
 *.pyc
-.health-report.json
+health-report.json
 
 # 编辑器与系统
 .DS_Store
