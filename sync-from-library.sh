@@ -41,13 +41,24 @@ done
 echo "脱敏校验…"
 FAIL=0
 if grep -rIn -- "$HOME" "$STAGE" >/dev/null 2>&1; then
-  echo "  ✗ 含本机主目录绝对路径："
+  echo "  ✗ 暂存内容含本机主目录绝对路径："
   grep -rIn -- "$HOME" "$STAGE" | sed "s|^$STAGE/|     |" | head -5
   FAIL=1
 fi
 
+# 也要扫整个仓库工作区：工具在本仓库里运行时会生成产物（例如 tools/health-report.json），
+# 那些文件含本机路径，一旦提交就进了公开历史。
+# 实测踩过：只扫暂存区会漏掉它们——那种文件不在白名单里，却是运行时自己冒出来的。
+STRAY="$(grep -rIn --exclude-dir=.git -- "$HOME" "$REPO" 2>/dev/null || true)"
+if [ -n "$STRAY" ]; then
+  echo "  ✗ 仓库工作区含本机主目录绝对路径（多为运行产物）："
+  echo "$STRAY" | sed 's/^/     /' | head -10
+  echo "     处理：删除该文件，并确认已被 .gitignore 覆盖。"
+  FAIL=1
+fi
+
 # 其他绝对路径只警告：文档里的示例路径（/home/me）是合理的
-WARN="$(grep -rIn -E '/Users/[A-Za-z0-9_.-]+|/home/[A-Za-z0-9_.-]+' "$STAGE" 2>/dev/null || true)"
+WARN="$(grep -rIn --exclude-dir=.git -E '/Users/[A-Za-z0-9_.-]+|/home/[A-Za-z0-9_.-]+' "$STAGE" 2>/dev/null || true)"
 if [ -n "$WARN" ]; then
   echo "  ⚠️  其他绝对路径（请确认是文档示例而非真实路径）："
   echo "$WARN" | sed "s|^$STAGE/|     |" | head -10
