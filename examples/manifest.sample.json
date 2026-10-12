@@ -1,0 +1,139 @@
+{
+  "version": 1,
+  "_说明": "节选 2 条示例，仅展示结构；完整 manifest 由 tools/inventory.py 在本机生成，不随仓库分发。",
+  "entries": [
+    {
+      "name": "darwin-skill",
+      "scope": "common",
+      "destination": "~/Skills/common/darwin-skill",
+      "selected": {
+        "source": "agents",
+        "path": "~/.agents/skills/darwin-skill",
+        "realpath": "~/.agents/skills/darwin-skill",
+        "folder": "darwin-skill",
+        "name": "darwin-skill",
+        "metadata": {
+          "name": "darwin-skill",
+          "description": "Darwin Skill 2.0 (达尔文.skill 2.0): autonomous skill optimizer, v2.0 integrates Microsoft Research SkillLens (arXiv 2605.23899) 9-dim rubric + SkillOpt (arXiv 2605.23904) validation-gated design + human-in-the-loop checkpoints. Evaluates SKILL.md files using a 9-dimension rubric (structure + effectiveness + meta-skill blacklists), runs hill-climbing with git version control, spawns independent judge agents for blind evaluation, validates improvements through test prompts with auto-break on diminishing returns, and generates visual result cards. Use when user mentions \"优化skill\", \"skill评分\", \"自动优化\", \"auto optimize\", \"skill质量检查\", \"达尔文\", \"darwin\", \"帮我改改skill\", \"skill怎么样\", \"提升skill质量\", \"skill review\", \"skill打分\"."
+        },
+        "supplemental": {},
+        "parse_error": null,
+        "sha256": "5e3d39ae5ef25f7d7cfe0f8ee4038eeb2e2452a984bb557b1fe86950e5cd1cd2",
+        "files": 7,
+        "skill_sha256": "3d57422079687a3aa641cb0c6c78ea8a5c6fa0c8645a37dfbcde4fdb870f7150",
+        "entry_mtime": 1791368189.1127176,
+        "symlink": false
+      },
+      "candidates": [
+        {
+          "source": "agents",
+          "path": "~/.agents/skills/darwin-skill",
+          "realpath": "~/.agents/skills/darwin-skill",
+          "folder": "darwin-skill",
+          "name": "darwin-skill",
+          "metadata": {
+            "name": "darwin-skill",
+            "description": "Darwin Skill 2.0 (达尔文.skill 2.0): autonomous skill optimizer, v2.0 integrates Microsoft Research SkillLens (arXiv 2605.23899) 9-dim rubric + SkillOpt (arXiv 2605.23904) validation-gated design + human-in-the-loop checkpoints. Evaluates SKILL.md files using a 9-dimension rubric (structure + effectiveness + meta-skill blacklists), runs hill-climbing with git version control, spawns independent judge agents for blind evaluation, validates improvements through test prompts with auto-break on diminishing returns, and generates visual result cards. Use when user mentions \"优化skill\", \"skill评分\", \"自动优化\", \"auto optimize\", \"skill质量检查\", \"达尔文\", \"darwin\", \"帮我改改skill\", \"skill怎么样\", \"提升skill质量\", \"skill review\", \"skill打分\"."
+          },
+          "supplemental": {},
+          "parse_error": null,
+          "sha256": "5e3d39ae5ef25f7d7cfe0f8ee4038eeb2e2452a984bb557b1fe86950e5cd1cd2",
+          "files": 7,
+          "skill_sha256": "3d57422079687a3aa641cb0c6c78ea8a5c6fa0c8645a37dfbcde4fdb870f7150",
+          "entry_mtime": 1791368189.1127176,
+          "symlink": false
+        },
+        {
+          "source": "claude",
+          "path": "~/.claude/skills/darwin-skill",
+          "realpath": "~/.claude/skills/darwin-skill",
+          "folder": "darwin-skill",
+          "name": "darwin-skill",
+          "metadata": {
+            "name": "darwin-skill",
+            "description": "Darwin Skill 2.0 (达尔文.skill 2.0): autonomous skill optimizer, v2.0 integrates Microsoft Research SkillLens (arXiv 2605.23899) 9-dim rubric + SkillOpt (arXiv 2605.23904) validation-gated design + human-in-the-loop checkpoints. Evaluates SKILL.md files using a 9-dimension rubric (structure + effectiveness + meta-skill blacklists), runs hill-climbing with git version control, spawns independent judge agents for blind evaluation, validates improvements through test prompts with auto-break on diminishing returns, and generates visual result cards. Use when user mentions \"优化skill\", \"skill评分\", \"自动优化\", \"auto optimize\", \"skill质量检查\", \"达尔文\", \"darwin\", \"帮我改改skill\", \"skill怎么样\", \"提升skill质量\", \"skill review\", \"skill打分\"."
+          },
+          "supplemental": {},
+          "parse_error": null,
+          "sha256": "81f661649ab4c3908a7fc3c19e3ad986e4202722e7053e443872b97b87575ebc",
+          "files": 36,
+          "skill_sha256": "c3220018f42a3d4cfb242c449df47fd72907670b52d5f00a59179065837044a8",
+          "entry_mtime": 1783561385.579683,
+          "symlink": false
+        },
+        {
+          "source": "cc-switch",
+          "path": "~/.cc-switch/skills/darwin-skill",
+          "realpath": "~/.cc-switch/skills/darwin-skill",
+          "folder": "darwin-skill",
+          "name": "darwin-skill",
+          "metadata": {
+            "name": "darwin-skill",
+            "description": "Darwin Skill 2.0 (达尔文.skill 2.0): autonomous skill optimizer, v2.0 integrates Microsoft Research SkillLens (arXiv 2605.23899) 9-dim rubric + SkillOpt (arXiv 2605.23904) validation-gated design + human-in-the-loop checkpoints. Evaluates SKILL.md files using a 9-dimension rubric (structure + effectiveness + meta-skill blacklists), runs hill-climbing with git version control, spawns independent judge agents for blind evaluation, validates improvements through test prompts with auto-break on diminishing returns, and generates visual result cards. Use when user mentions \"优化skill\", \"skill评分\", \"自动优化\", \"auto optimize\", \"skill质量检查\", \"达尔文\", \"darwin\", \"帮我改改skill\", \"skill怎么样\", \"提升skill质量\", \"skill review\", \"skill打分\"."
+          },
+          "supplemental": {},
+          "parse_error": null,
+          "sha256": "cc0e1e13279ea085ab9218c5a64c9cb4f4294546b7075be93b8399185d1041c6",
+          "files": 35,
+          "skill_sha256": "c3220018f42a3d4cfb242c449df47fd72907670b52d5f00a59179065837044a8",
+          "entry_mtime": 1780641681.0,
+          "symlink": false
+        }
+      ],
+      "managed": false,
+      "nested": false,
+      "reason": "Reviewed latest local primary source; platform adaptations retained"
+    },
+    {
+      "name": "skill-update-guard",
+      "scope": "common",
+      "destination": "~/Skills/common/skill-update-guard",
+      "selected": {
+        "source": "agents",
+        "path": "~/Skills/common/skill-update-guard",
+        "realpath": "~/Skills/common/skill-update-guard",
+        "folder": "skill-update-guard",
+        "name": "skill-update-guard",
+        "metadata": {
+          "name": "skill-update-guard",
+          "description": "Use when 需要检查本机从 GitHub 克隆的 skill 有没有新版本、准备把某个 skill 更新到上游、或要判断某次 skill 更新是否安全可应用。触发词：检查skill更新、更新skill、skill落后了吗、skill是不是最新、升级skill、skill outdated、skill update、这个skill更新安全吗、更新完校验。也适用于目录带 .git 的 skill、或更新后 manifest 指纹需要重新对齐的场景。不用于花叔系复制安装的 skill（走 huashu-skill-updater），也不用于改写 SKILL.md 正文（走 darwin-skill）。"
+        },
+        "supplemental": {},
+        "parse_error": null,
+        "sha256": "9dccbc27770a86aaf9c7ad5811c4b90473c130c4d9375fa689225ae825394f42",
+        "files": 4,
+        "skill_sha256": "cb2a89ffe10e4b9e15b03cc6d66a7e20eef19d82e7bbe3e0bf6f916573407a09",
+        "entry_mtime": 1791801157.5980818,
+        "symlink": false
+      },
+      "candidates": [
+        {
+          "source": "agents",
+          "path": "~/Skills/common/skill-update-guard",
+          "realpath": "~/Skills/common/skill-update-guard",
+          "folder": "skill-update-guard",
+          "name": "skill-update-guard",
+          "metadata": {
+            "name": "skill-update-guard",
+            "description": "Use when 需要检查本机从 GitHub 克隆的 skill 有没有新版本、准备把某个 skill 更新到上游、或要判断某次 skill 更新是否安全可应用。触发词：检查skill更新、更新skill、skill落后了吗、skill是不是最新、升级skill、skill outdated、skill update、这个skill更新安全吗、更新完校验。也适用于目录带 .git 的 skill、或更新后 manifest 指纹需要重新对齐的场景。不用于花叔系复制安装的 skill（走 huashu-skill-updater），也不用于改写 SKILL.md 正文（走 darwin-skill）。"
+          },
+          "supplemental": {},
+          "parse_error": null,
+          "sha256": "36b15d5605ed26ad6ebf8c890f9af0af63b81cb03058a3dc18d9ec503034f658",
+          "files": 3,
+          "skill_sha256": "cb2a89ffe10e4b9e15b03cc6d66a7e20eef19d82e7bbe3e0bf6f916573407a09",
+          "entry_mtime": 1791801157.5980818,
+          "symlink": false
+        }
+      ],
+      "managed": false,
+      "nested": false,
+      "reason": "Newly authored in-library skill; no upstream candidate"
+    }
+  ],
+  "links": {
+    "~/.claude/skills/academic-paper": "~/Skills/platforms/claude/academic-paper",
+    "~/.cc-switch/skills/academic-paper": "~/Skills/platforms/claude/academic-paper",
+    "~/.claude/skills/academic-paper-reviewer": "~/Skills/platforms/claude/academic-paper-reviewer"
+  }
+}

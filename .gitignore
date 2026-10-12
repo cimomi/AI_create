@@ -1,0 +1,16 @@
+# 运行产物
+__pycache__/
+*.pyc
+.health-report.json
+
+# 编辑器与系统
+.DS_Store
+.vscode/
+.idea/
+
+# 本地验证记录（含机器相关信息，不入库）
+*.local.json
+
+# 备份与恢复快照
+update-backups/
+.recovery/
