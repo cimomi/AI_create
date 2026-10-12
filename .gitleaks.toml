@@ -1,11 +1,13 @@
-# gitleaks 配置：在官方默认规则之上只做本仓库的少量调整。
-# 默认规则集已经很全（数百条），不要自己重写——只加豁免。
+# gitleaks configuration: the official default ruleset plus a few local
+# allowances. The default rules already number in the hundreds — do not
+# rewrite them, only add exemptions.
 [extend]
 useDefault = true
 
 [allowlist]
-description = "本仓库的已知安全示例：文档里为演示风险模式而写的内容"
+description = "Known-safe content in this repository: risk patterns quoted in the docs"
 paths = [
-  # 工程记录里会引用真实的风险模式样例（如 curl|bash），不是可用凭证
+  # The engineering notes quote real risk patterns (such as curl|bash) as
+  # examples. They are not usable credentials.
   '''skill-library-manager/docs/ENGINEERING\.md$''',
 ]

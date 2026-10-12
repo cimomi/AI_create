@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
-"""Skills 库一键体检。
+"""One-shot health check for the Skills library.
 
-只读检查，不修改任何 Skill 内容。覆盖：
-  A 内容完整性   destination 存在、SKILL.md 存在、文件指纹与 manifest 一致
-  B 入口链接     311 条链接均为指向库内的有效符号链接
-  C 入口一致性   各 harness 入口目录的实际条目与 manifest 完全对应
-  D 元数据       frontmatter 的 name/description 合法且无重名
-  E 平台隔离     Codex 专用 Skill 未泄漏到公共入口
-  F 杂物         入口目录中无 .git / .DS_Store / __pycache__
-  G 编目覆盖     库内目录与 manifest 双向对应，无漏编
-  H 内容重复     无同哈希的重复 Skill
+Read-only: never modifies any Skill content. Covers eight checks:
 
-用法:
-    python3 .maintenance/health.py            # 人读报告
-    python3 .maintenance/health.py --json     # 仅输出 JSON
-    python3 .maintenance/health.py --quiet    # 仅输出结论行
-退出码: 0 = 全部通过, 1 = 存在 error。
+  A  Content integrity   destination exists, SKILL.md present, fingerprint matches manifest
+  B  Entry links         every manifest link is a valid symlink pointing inside the library
+  C  Entry parity        each harness entry directory matches the manifest exactly
+  D  Metadata            frontmatter name/description valid, no duplicate names
+  E  Platform isolation  Codex-only skills not leaked into public entry points
+  F  Cruft               no .git / .DS_Store / __pycache__ in entry directories
+  G  Catalogue coverage  library directories and manifest agree both ways
+  H  Content duplicates  no two skills share the same fingerprint
+
+Usage:
+    python3 tools/health.py            # human-readable report
+    python3 tools/health.py --json     # JSON only
+    python3 tools/health.py --quiet    # single summary line
+Exit code: 0 = all checks passed, 1 = problems found, 2 = environment error.
 """
 import argparse
 import collections
@@ -39,19 +40,24 @@ ENTRY_ROOTS = [HOME / '.agents/skills', HOME / '.codex/skills',
 CRUFT = {'.DS_Store', '__pycache__', '.git', '.pytest_cache'}
 IGNORED_ENTRIES = {'.DS_Store', '.system', '.git', '.gitignore'}
 
+SCOPES = [('common', ROOT / 'common'),
+          ('codex', ROOT / 'platforms/codex'),
+          ('claude', ROOT / 'platforms/claude')]
+
 
 def check():
     if not MANIFEST.is_file():
-        print(f'找不到 manifest：{MANIFEST}\n'
-              f'请把 SKILLS_ROOT 指向一个已初始化的 Skill 库，'
-              f'或先运行 .maintenance/inventory.py 生成清单。', file=sys.stderr)
+        print(f'Manifest not found: {MANIFEST}\n'
+              f'Point SKILLS_ROOT at an initialised Skill library, '
+              f'or run inventory.py first to generate the catalogue.',
+              file=sys.stderr)
         raise SystemExit(2)
     manifest = json.loads(MANIFEST.read_text())
     entries, links = manifest['entries'], manifest['links']
     findings = collections.defaultdict(list)
     stats = {'skills': len(entries), 'links': len(links)}
 
-    # ---------- A 内容完整性 ----------
+    # ---------- A  Content integrity ----------
     for e in entries:
         dest = Path(e['destination'])
         if not dest.is_dir():
@@ -65,9 +71,9 @@ def check():
         if actual != expected:
             findings['A_content_mismatch'].append(e['name'])
 
-    # ---------- B 入口链接 ----------
+    # ---------- B  Entry links ----------
     for src, dst in links.items():
-        p, t = Path(src), Path(dst)
+        p = Path(src)
         if not p.is_symlink():
             findings['B_not_symlink'].append(src)
         elif not p.exists():
@@ -75,11 +81,11 @@ def check():
         elif os.path.realpath(src) != os.path.realpath(dst):
             findings['B_wrong_target'].append(f'{src} -> {os.readlink(src)}')
 
-    # ---------- C 入口一致性 ----------
+    # ---------- C  Entry parity ----------
     for root in ENTRY_ROOTS:
         rp = Path(root)
         if not rp.is_dir():
-            findings['C_entry_root_absent'].append(root)
+            findings['C_entry_root_absent'].append(str(root))
             continue
         actual = {x.name for x in rp.iterdir() if x.name not in IGNORED_ENTRIES}
         expected = {Path(s).name for s in links if Path(s).parent == rp}
@@ -88,7 +94,7 @@ def check():
         for name in sorted(expected - actual):
             findings['C_missing_entry'].append(f'{root}/{name}')
 
-    # ---------- D 元数据 ----------
+    # ---------- D  Metadata ----------
     seen_names, by_hash = collections.defaultdict(list), collections.defaultdict(list)
     for e in entries:
         skill_md = Path(e['destination']) / 'SKILL.md'
@@ -117,9 +123,9 @@ def check():
             findings['D_duplicate_name'].append(f'{name}: {dupes}')
     for h, dupes in by_hash.items():
         if len(dupes) > 1:
-            findings['H_duplicate_content'].append(f'{h[:12]}: {dupes}')
+            findings['H_duplicate_content'].append(f'{str(h)[:12]}: {dupes}')
 
-    # ---------- E 平台隔离 ----------
+    # ---------- E  Platform isolation ----------
     private = {Path(e['destination']).name for e in entries if e['scope'] == 'codex'}
     for rel in PUBLIC_ROOTS:
         base = HOME / rel
@@ -130,8 +136,9 @@ def check():
             if cand.is_symlink() or cand.exists():
                 findings['E_private_leak'].append(str(cand))
 
-    # ---------- F 杂物 ----------
-    # 入口目录里的 .git / .DS_Store / __pycache__ 一律视为杂物（单一实体设计的破坏）。
+    # ---------- F  Cruft ----------
+    # A .git / .DS_Store / __pycache__ inside an entry directory breaks the
+    # single-source design, so it counts as cruft.
     for root in ENTRY_ROOTS:
         rp = Path(root)
         if not rp.is_dir():
@@ -142,30 +149,26 @@ def check():
                     findings['F_entry_cruft'].append(str(Path(base) / n))
             if '.git' in dirs:
                 dirs.remove('.git')
-    # 库根只查顶层，不递归进 Skill 包内部。
+    # The library root is only checked one level deep, never inside skill bundles.
     for n in CRUFT:
         if (ROOT / n).exists():
             findings['F_entry_cruft'].append(str(ROOT / n))
     if (ROOT / '.maintenance/__pycache__').exists():
         findings['F_entry_cruft'].append(str(ROOT / '.maintenance/__pycache__'))
 
-    # 库内 Skill 自带的 git 仓库是上游更新通道（huashu-skill-updater 依赖），
-    # 不属于杂物，仅作信息记录。
+    # A git repository inside a skill bundle is that skill's upstream update
+    # channel, not cruft. Recorded as information only.
     info = collections.defaultdict(list)
-    for scope, base in [('common', ROOT / 'common'),
-                        ('codex', ROOT / 'platforms/codex'),
-                        ('claude', ROOT / 'platforms/claude')]:
+    for _scope, base in SCOPES:
         if not base.is_dir():
             continue
         for d in base.iterdir():
             if d.is_dir() and (d / '.git').is_dir():
                 info['nested_git'].append(str(d))
 
-    # ---------- G 编目覆盖 ----------
+    # ---------- G  Catalogue coverage ----------
     catalogued = {e['destination'] for e in entries}
-    for scope, base in [('common', ROOT / 'common'),
-                        ('codex', ROOT / 'platforms/codex'),
-                        ('claude', ROOT / 'platforms/claude')]:
+    for _scope, base in SCOPES:
         if not base.is_dir():
             continue
         for d in base.iterdir():
@@ -174,7 +177,8 @@ def check():
             if str(d) not in catalogued:
                 findings['G_uncatalogued'].append(str(d))
     for e in entries:
-        if not Path(e['destination']).is_dir() and e['destination'] not in findings['A_missing_destination']:
+        if not Path(e['destination']).is_dir() \
+                and e['destination'] not in findings['A_missing_destination']:
             findings['G_broken_catalog'].append(e['name'])
 
     stats['scope_counts'] = dict(collections.Counter(e['scope'] for e in entries))
@@ -185,14 +189,15 @@ def check():
 
 
 def main():
-    ap = argparse.ArgumentParser(description='Skills 库一键体检')
-    ap.add_argument('--json', action='store_true', help='仅输出 JSON')
-    ap.add_argument('--quiet', action='store_true', help='仅输出结论行')
-    ap.add_argument('--no-write', action='store_true', help='不写 health-report.json')
+    ap = argparse.ArgumentParser(description='Skills library health check')
+    ap.add_argument('--json', action='store_true', help='JSON output only')
+    ap.add_argument('--quiet', action='store_true', help='single summary line')
+    ap.add_argument('--no-write', action='store_true', help='do not write health-report.json')
     args = ap.parse_args()
 
     result = check()
-    REPORT.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
+    if not args.no_write:
+        REPORT.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
 
     if args.quiet:
         print(('OK' if result['ok'] else 'FAIL') +
@@ -205,29 +210,30 @@ def main():
         return 0 if result['ok'] else 1
 
     s = result['stats']
-    print('Skills 库体检报告')
-    print(f"  逻辑 Skill  {s['skills']}  "
+    print('Skills library health report')
+    print(f"  skills      {s['skills']}  "
           f"({', '.join(f'{k} {v}' for k, v in sorted(s['scope_counts'].items()))})")
-    print(f"  入口链接    {s['links']}")
+    print(f"  entry links {s['links']}")
     print()
     if result['info']:
         for k, v in sorted(result['info'].items()):
             if k == 'nested_git':
-                print(f"  信息: {len(v)} 个 Skill 自带上游 git 仓库（供更新检查，非杂物）")
+                print(f'  info: {len(v)} skill(s) ship their own upstream git repo '
+                      f'(update channel, not cruft)')
                 for item in v:
                     print(f'    - {item}')
         print()
     if result['ok']:
-        print('  结论: 全部通过，无需处理')
+        print('  result: all checks passed')
     else:
-        print('  结论: 发现以下问题')
+        print('  result: problems found')
         for k, v in sorted(result['findings'].items()):
-            print(f"\n  [{k}] {len(v)} 项")
+            print(f"\n  [{k}] {len(v)} item(s)")
             for item in v[:12]:
                 print(f'    - {item}')
             if len(v) > 12:
-                print(f'    ... 另有 {len(v) - 12} 项，详见 {REPORT}')
-    print(f"\n  报告: {REPORT}")
+                print(f'    ... {len(v) - 12} more, see {REPORT}')
+    print(f"\n  report: {REPORT}")
     return 0 if result['ok'] else 1
 
 

@@ -1,30 +1,43 @@
-# 更新日志
+# Changelog
 
-本文件记录本仓库的显著变更。
-格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
+Notable changes to this repository.
+Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-12
+
+### Added
+- Full English translation of the published artefacts
+
+### Changed
+- Repository conventions, security documentation and engineering notes are now
+  written in English for an international audience
+
 ## [0.2.0] - 2026-10-12
 
-### 新增
-- 分层安全闸门：本地 `pre-commit` / `pre-push` 钩子 + 服务端 GitHub Actions CI
-- `scripts/audit.py`：仓库审计（绝对路径、凭证文件、超大文件、疑似第三方内容），
-  同时覆盖当前文件与全部历史 blob
-- `.gitleaks.toml` 与 gitleaks 集成，负责密钥扫描
-- `scripts/install-hooks.sh`：一键启用钩子
-- `SECURITY.md`、`CONTRIBUTING.md`、`CHANGELOG.md`
+### Added
+- Layered security gate: local `pre-commit` / `pre-push` hooks plus server-side
+  GitHub Actions CI
+- `scripts/audit.py`: repository audit covering absolute paths, credential
+  files, oversized files and probable third-party content, across both the
+  current tree and the full history
+- `.gitleaks.toml` and gitleaks integration for secret scanning
+- `scripts/install-hooks.sh` to enable the hooks in one step
+- `SECURITY.md`, `CONTRIBUTING.md`, `CHANGELOG.md`
 
-### 变更
-- 仓库根改为作品集容器，`skill-library-manager` 下沉为顶层项目目录
-- `LICENSE` 提到仓库根，全仓库共用
-- 根 `README.md` 改为作品索引 + 仓库约定
+### Changed
+- The repository root is now a portfolio container; `skill-library-manager`
+  moved into a top-level project directory
+- `LICENSE` moved to the repository root and applies repository-wide
+- Root `README.md` reworked into a project index plus repository conventions
 
 ## [0.1.0] - 2026-10-12
 
-### 新增
-- `skill-library-manager`：跨 10 个 AI 工具的 Skill 统一库管理工具链
-  - 八类完整性检查、九项跨工具接入检查
-  - 新 Skill 登记流程，失败自动回滚
-  - `skill-update-guard`：Skill 溯源与安全更新
-  - 工程记录 `docs/ENGINEERING.md`
+### Added
+- `skill-library-manager`: a maintenance toolchain for a unified skill library
+  shared across 10 AI tools
+  - 8 integrity checks and 9 cross-tool integration checks
+  - Skill registration with automatic rollback on failure
+  - `skill-update-guard`: provenance tracing and safe updates
+  - Engineering notes in `docs/ENGINEERING.md`

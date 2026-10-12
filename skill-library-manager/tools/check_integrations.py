@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
-"""各 harness 接入本库的实时检查（可重复运行）。
+"""Live check that every harness still points at this library. Repeatable.
 
-与 health.py 的分工：
-  health.py            检查库内内容、链接、元数据是否自洽
-  check_integrations.py 检查外部软件是否仍正确指向本库
+Division of labour with health.py:
+    health.py              checks that the library is internally consistent
+    check_integrations.py  checks that external tools still point at the library
 
-覆盖 cc-switch、Hermes、Kimi 桌面版、Codex 与四个入口根目录。
-只读，不修改任何配置。退出码: 0 = 全部通过, 1 = 存在 error。
+Covers cc-switch, Hermes, Kimi Desktop, Codex, and the four entry roots.
+Read-only: never modifies any configuration.
+Exit code: 0 = all passed, 1 = at least one error.
 
-注意：Codex `config.toml` 由 Codex 应用自身维护，应用升级会改写版本号、
-浏览器服务路径和界面偏好。本脚本只检查其中的 Skill 相关事实（入口目录），
-不对整份文件做逐字断言——那是一次性迁移记录（verify_config.py）的职责。
+Note: Codex `config.toml` is maintained by the Codex application itself. App
+upgrades rewrite the version string, browser service path, and UI preferences.
+This script therefore only verifies the skill-related fact (the entry
+directory); byte-level assertions on that file belong to the one-off migration
+record in the project notes.
 """
 import json
 import os
@@ -21,6 +24,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _paths import HOME, ROOT  # noqa: E402
+
 MANIFEST = json.loads((ROOT / 'manifest.json').read_text())
 
 ENTRY_ROOTS = [HOME / '.agents/skills', HOME / '.codex/skills',
@@ -37,13 +41,14 @@ def fail(msg):
     errors.append(msg)
 
 
-# ---------- 入口根目录 ----------
-# 判定标准：条目的“直连目标”必须写在本库路径下。像 .cc-switch/skills/dogfood
-# 指向库内 managed/hermes/dogfood（再由 managed/hermes 中转回 ~/.hermes）是合法设计，
-# 因此不能用完全解析后的路径来判断。
+# ---------- Entry roots ----------
+# The criterion is the *direct* link target, not the fully resolved path.
+# .cc-switch/skills/dogfood -> <library>/managed/hermes/dogfood is legitimate:
+# managed/hermes itself is a link through to ~/.hermes, so the resolved path
+# lands outside the library even though the design is correct.
 for root in ENTRY_ROOTS:
     if not root.is_dir():
-        fail(f'入口根目录缺失: {root}')
+        fail(f'entry root missing: {root}')
         continue
     bad = []
     for x in root.iterdir():
@@ -52,86 +57,87 @@ for root in ENTRY_ROOTS:
         if not (x.is_symlink() and x.exists() and os.readlink(x).startswith(str(ROOT))):
             bad.append(x.name)
     if bad:
-        fail(f'{root}: {len(bad)} 项不是指向本库的有效链接 -> {bad[:5]}')
+        fail(f'{root}: {len(bad)} entr(ies) are not valid links into the library -> {bad[:5]}')
     else:
         n = len([x for x in root.iterdir() if x.is_symlink()])
-        ok(f'{root.parent.name}/{root.name}: {n} 项链接有效')
+        ok(f'{root.parent.name}/{root.name}: {n} valid links')
 
 # ---------- cc-switch ----------
 cc_file = HOME / '.cc-switch/settings.json'
 if not cc_file.is_file():
-    fail('cc-switch settings.json 不存在')
+    fail('cc-switch settings.json not found')
 else:
     cc = json.loads(cc_file.read_text())
     if cc.get('skillSyncMethod') != 'symlink':
-        fail(f"cc-switch skillSyncMethod = {cc.get('skillSyncMethod')!r}，应为 'symlink'")
+        fail(f"cc-switch skillSyncMethod = {cc.get('skillSyncMethod')!r}, expected 'symlink'")
     else:
-        ok("cc-switch: skillSyncMethod = symlink")
+        ok('cc-switch: skillSyncMethod = symlink')
 
 # ---------- Hermes ----------
 hermes_file = HOME / '.hermes/config.yaml'
 if not hermes_file.is_file():
-    fail('Hermes config.yaml 不存在')
+    fail('Hermes config.yaml not found')
 else:
     hd = yaml.safe_load(hermes_file.read_text()).get('skills', {}).get('external_dirs', [])
     expected = MANIFEST['hermes']['external_dirs']
     if hd != expected:
         only_now = sorted(set(hd) - set(expected))
         only_exp = sorted(set(expected) - set(hd))
-        fail(f'Hermes external_dirs 与 manifest 不一致 '
-             f'(当前 {len(hd)} / 预期 {len(expected)}; 多 {only_now[:3]} 缺 {only_exp[:3]})')
+        fail(f'Hermes external_dirs differs from manifest '
+             f'(have {len(hd)} / expect {len(expected)}; extra {only_now[:3]} missing {only_exp[:3]})')
     else:
-        ok(f'Hermes: external_dirs {len(hd)} 项与 manifest 一致')
+        ok(f'Hermes: external_dirs matches manifest ({len(hd)} entries)')
     missing = [d for d in hd if not Path(d).is_dir()]
     if missing:
-        fail(f'Hermes external_dirs 中 {len(missing)} 项目录不存在 -> {missing[:3]}')
+        fail(f'Hermes external_dirs: {len(missing)} path(s) do not exist -> {missing[:3]}')
 
-# ---------- Kimi 桌面版 ----------
+# ---------- Kimi Desktop ----------
 plugin_file = ROOT / 'kimi.plugin.json'
 if not plugin_file.is_file():
-    fail('kimi.plugin.json 不存在')
+    fail('kimi.plugin.json not found')
 else:
     pp = json.loads(plugin_file.read_text())
     bad = [p for p in pp.get('skills', []) if not (ROOT / p).is_dir()]
     if bad:
-        fail(f'kimi.plugin.json 中路径不存在 -> {bad}')
+        fail(f'kimi.plugin.json references missing paths -> {bad}')
     else:
-        ok(f"kimi.plugin.json: {len(pp.get('skills', []))} 条共享路径有效")
+        ok(f"kimi.plugin.json: {len(pp.get('skills', []))} shared path(s) valid")
 
 registry = Path(MANIFEST['kimi_desktop']['registry'])
 if not registry.is_file():
-    fail(f'Kimi 插件注册表不存在: {registry}')
+    fail(f'Kimi plugin registry not found: {registry}')
 else:
     plugins = json.loads(registry.read_text()).get('plugins', [])
     hit = [p for p in plugins if p.get('id') == 'shared-skills-library']
     if not hit:
-        fail('Kimi 注册表缺少 shared-skills-library 插件')
+        fail('Kimi registry is missing the shared-skills-library plugin')
     elif hit[0].get('root') != str(ROOT):
-        fail(f"Kimi 插件 root = {hit[0].get('root')!r}，应为 {str(ROOT)!r}")
+        fail(f"Kimi plugin root = {hit[0].get('root')!r}, expected {str(ROOT)!r}")
     elif hit[0].get('enabled') is not True:
-        fail('Kimi shared-skills-library 插件未启用')
+        fail('Kimi shared-skills-library plugin is not enabled')
     else:
-        ok(f'Kimi 桌面版: shared-skills-library 已启用，root 正确（共 {len(plugins)} 插件）')
+        ok(f'Kimi Desktop: shared-skills-library enabled, root correct '
+           f'({len(plugins)} plugins total)')
 
 # ---------- Codex ----------
 codex_cfg = HOME / '.codex/config.toml'
 if not codex_cfg.is_file():
-    fail('Codex config.toml 不存在')
+    fail('Codex config.toml not found')
 else:
     text = codex_cfg.read_text(errors='replace')
     if 'skills' in text:
-        info.append(('注意', 'Codex config.toml 出现 skills 字样，请人工确认是否有 Skill 配置'))
-    ok('Codex: config.toml 存在（内容由 Codex 应用维护，Skill 入口目录已验证）')
+        info.append(('NOTE', 'Codex config.toml mentions "skills" — confirm manually'))
+    ok('Codex: config.toml present (maintained by the Codex app; entry directory verified)')
 
-# ---------- 输出 ----------
-print('各 harness 接入检查')
+# ---------- Output ----------
+print('Harness integration check')
 for tag, msg in info:
     print(f'  [{tag}] {msg}')
 if errors:
     print()
     for e in errors:
-        print(f'  [错误] {e}')
-    print(f'\n结论: {len(errors)} 项异常')
+        print(f'  [ERROR] {e}')
+    print(f'\nResult: {len(errors)} problem(s)')
     raise SystemExit(1)
-print(f'\n结论: 全部通过（{len(info)} 项）')
+print(f'\nResult: all passed ({len(info)} checks)')
 raise SystemExit(0)

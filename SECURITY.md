@@ -1,43 +1,49 @@
-# 安全策略
+# Security policy
 
-## 报告问题
+## Reporting a vulnerability
 
-发现安全问题请**不要开公开 issue**。使用 GitHub 的
-[私密报告](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability)
-（仓库 → Security → Report a vulnerability），或直接联系仓库所有者。
+Please do **not** open a public issue for a security problem. Use GitHub's
+[private reporting](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability)
+(repository → Security → Report a vulnerability), or contact the owner directly.
 
-请附上：复现步骤、影响范围、可能的修复方向。
+Include: reproduction steps, impact, and any suggested fix.
 
-## 本仓库自己怎么防泄漏
+## How this repository protects itself
 
-这个仓库是公开的，所以**推送前的安全闸门是强制的**，分三层：
+The repository is public, so **the pre-push security gate is mandatory** and
+runs in four layers:
 
-| 层 | 位置 | 时机 | 覆盖 | 能否阻止泄漏 |
+| Layer | Location | Timing | Covers | Prevent a leak? |
 | --- | --- | --- | --- | --- |
-| 1 | `.githooks/pre-commit` | 提交**前** | 暂存区密钥 | 能，但可 `--no-verify` 绕过 |
-| 2 | `.githooks/pre-push` | 推送**前** | 全部历史密钥 + 绝对路径等 | 能，但可 `--no-verify` 绕过 |
-| 3 | `.github/workflows/security.yml` | 推送**后** | 同上，服务端 | **不能**——它在推送之后运行，只能发现与告警 |
-| 4 | GitHub Push Protection | 推送**时** | 平台已知凭证格式 | **能，且不可绕过** |
+| 1 | `.githooks/pre-commit` | before commit | staged secrets | Yes, but `--no-verify` bypasses it |
+| 2 | `.githooks/pre-push` | before push | full-history secrets + absolute paths | Yes, but `--no-verify` bypasses it |
+| 3 | `.github/workflows/security.yml` | after push | same, server-side | **No** — it runs after the push, so it can only detect and alert |
+| 4 | GitHub Push Protection | at push time | platform-known credential formats | **Yes**, and it cannot be bypassed |
 
-**必须说清楚的一点**：第 3 层的 CI 虽然无法被 `--no-verify` 跳过，但
-**GitHub Actions 在推送完成之后才运行，所以它拦不住泄漏本身**。它能做的是
-发现、告警，以及（配合分支保护）阻止问题代码被合并进 `main`。
+**The important caveat**: layer 3 cannot be skipped with `--no-verify`, but
+**GitHub Actions runs only after the push has completed, so it does not stop the
+leak**. What it can do is surface the problem and — combined with branch
+protection — prevent the offending commit from being merged into `main`.
 
-真正能在推送**当时**拒绝的是第 4 层。
+Only layer 4 rejects a push at the moment it happens.
 
-关键点：**必须扫描全部历史**。一次泄漏哪怕后来删掉了，只要进过提交，
-它就仍然留在 git 对象里、仍然能通过 API 取到。只检查当前工作区是不够的。
+The key requirement for layers 1–3 is scanning the **entire history**. Once
+something has been committed, deleting the file is not enough: the object stays
+in the repository and can still be fetched through the API. A working-tree-only
+check misses that case entirely.
 
 ```bash
-scripts/install-hooks.sh    # 新克隆的机器执行一次
+scripts/install-hooks.sh    # run once per fresh clone
 ```
 
-## 建议同时开启 GitHub 原生防护
+## Recommended: also enable GitHub's native protection
 
-仓库管理员可在 **Settings → Code security** 开启：
+A repository admin can turn on, under **Settings → Code security**:
 
-- **Secret scanning** —— 自动扫描已推送内容中的已知凭证格式
-- **Push protection** —— 在服务端**直接拒绝**含凭证的推送
+- **Secret scanning** — scans pushed content for known credential formats
+- **Push protection** — **rejects** pushes containing them, server-side
 
-这两项对公开仓库免费，且位于平台层，比任何客户端手段都更早生效。
-**本仓库的本地钩子与 CI 都是补充，不是替代**——只有 Push Protection 能在泄漏发生前拦住它。
+Both are free for public repositories and sit at the platform layer, earlier
+than any client-side measure. **The hooks and CI in this repository complement
+them, they do not replace them** — only Push Protection can stop a leak before
+it happens.

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# 提交前快检：gitleaks（暂存区）+ 本仓库审计（不扫历史，快）。
-# 真正的完整拦截在 pre-push。注意 --no-verify 可以绕过本地钩子，
-# 所以服务端还有 CI 兜底（.github/workflows/security.yml）。
+# Fast pre-commit check: gitleaks (staged) plus the repository audit
+# (current files only). The full gate runs in pre-push.
+#
+# Note: --no-verify bypasses local hooks, which is why a server-side CI
+# workflow exists as a backstop (.github/workflows/security.yml).
 set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 FAIL=0
@@ -9,7 +11,7 @@ FAIL=0
 if command -v gitleaks >/dev/null 2>&1; then
   gitleaks protect --staged --no-banner --redact --config "$ROOT/.gitleaks.toml" || FAIL=1
 else
-  echo "提示：未安装 gitleaks（brew install gitleaks），本次跳过密钥扫描。" >&2
+  echo "NOTE: gitleaks not installed (brew install gitleaks); secret scan skipped." >&2
 fi
 
 python3 "$ROOT/scripts/audit.py" --no-history || FAIL=1

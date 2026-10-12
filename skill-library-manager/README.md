@@ -1,138 +1,172 @@
 # Skill Library Manager
 
-**一套把散落在 10 个 AI 工具里的 Skill 收敛成单一可信来源的管理系统。**
+**A management system that consolidates skills scattered across 10 AI tools into
+a single trusted source.**
 
-本机 121 个 Skill 只维护一份实体文件，各工具通过符号链接读取；所有内容有指纹登记、有完整性校验、有安全更新通道。仓库里是**管理这套库的工具链**，不含任何第三方 Skill 内容。
-
-> A single-source-of-truth manager for AI agent skills spread across 10 tools: one canonical copy, symlinked into every harness, fingerprinted, verified, and safely updatable.
+121 skills live as one real copy on this machine; every tool reads them through
+symlinks. All content is fingerprinted, verified, and updatable through a safe
+supply-chain path. This repository contains **the toolchain that manages that
+library** — not any third-party skill content.
 
 ---
 
-## 为什么需要它
+## The problem
 
-同一个 Skill 被装进 Codex、Claude Code、Gemini CLI、Kimi、Hermes……每个工具抄一份。很快就会出现：
+The same skill gets installed into Codex, Claude Code, Gemini CLI, Kimi,
+Hermes… each tool keeping its own copy. Before long:
 
-- 同一 Skill 五个副本，版本各不相同，改了一处其余四处还是旧的
-- 不知道哪个副本是正本，删哪个都心虚
-- 更新时不知道会不会把某个工具的本地改动覆盖掉
-- 谁从哪装的、能不能更新、更新安不安全，全无记录
+- five copies of one skill, all at different versions; you fix one and the other
+  four stay stale
+- no way to tell which copy is canonical, so deleting any of them feels risky
+- no idea whether updating will clobber a local change in one of the tools
+- no record of where anything came from, whether it can be updated, or whether
+  updating it is safe
 
-这套系统把"**单一实体 + 链接分发 + 指纹登记 + 可验证**"作为唯一结构，并用工具链把维护动作固化下来。
+This system makes **one real copy + symlink distribution + fingerprint
+registration + verifiability** the only supported structure, and freezes the
+maintenance actions into tools.
 
-## 结构
+## Structure
 
 ```
 ~/Skills/
-├── common/            通用 Skill（全工具共享，单一实体）
-├── platforms/         平台专用 Skill（claude / codex，不污染公共入口）
-├── managed/           对应用内置目录的引用，不复制内容
-├── manifest.json      121 条记录：来源、候选版本、文件指纹、平台分配、入口链接
-├── CATALOG.md         人可读的清单（由 manifest 生成）
-└── .maintenance/      工具链 + 验证记录 + 恢复快照
+├── common/            shared skills (one real copy for every tool)
+├── platforms/         platform-specific skills (claude / codex), kept out of public entries
+├── managed/           references to application-bundled directories; no content copied
+├── manifest.json      121 records: source, candidate versions, fingerprints, allocation, links
+├── CATALOG.md         human-readable catalogue (generated from the manifest)
+└── .maintenance/      toolchain + verification records + recovery snapshot
 ```
 
-各工具的 skills 目录**全部是符号链接**，指回 `~/Skills`。改一处，10 个工具同时生效。
+Each tool's skills directory contains **only symlinks** pointing back into
+`~/Skills`. Change one file, and all 10 tools see it.
 
-| 工具 | 接入方式 |
+| Tool | Integration |
 | --- | --- |
-| Codex / ChatGPT 本地 Codex 引擎 | 公共入口 + Codex 专用入口 |
-| DeepSeek Harness | 公共入口 |
-| Claude Code | 公共入口 + Claude 专用链接 |
-| VS Code Claude Code 扩展 | 复用同一 Claude 用户库 |
-| Gemini CLI | 公共入口 |
-| Kimi Code / Kimi 桌面版 | 公共入口 + 原生本地插件 |
-| Pi | 公共入口 |
-| Hermes | 原生 `skills.external_dirs` |
-| CC Switch | 目录改为链接，同步方式 `symlink` |
+| Codex / ChatGPT local Codex engine | shared entry + Codex-specific entry |
+| DeepSeek Harness | shared entry |
+| Claude Code | shared entry + Claude-specific links |
+| VS Code Claude Code extension | reuses the same Claude user library |
+| Gemini CLI | shared entry |
+| Kimi Code / Kimi Desktop | shared entry + native local plugin |
+| Pi | shared entry |
+| Hermes | native `skills.external_dirs` |
+| CC Switch | directories replaced with links, sync method `symlink` |
 
-## 工具链
+## Toolchain
 
-### 完整性：`tools/health.py`
+### Integrity: `tools/health.py`
 
-八类只读检查，退出码即结论，可直接接 CI 或 cron。
+Eight read-only checks. The exit code is the verdict, so it drops straight into
+CI or cron.
 
 ```bash
-python3 tools/health.py           # 人读报告
-python3 tools/health.py --quiet   # 仅结论行
-python3 tools/health.py --json    # 机器可读
+python3 tools/health.py           # human-readable report
+python3 tools/health.py --quiet   # single summary line
+python3 tools/health.py --json    # machine-readable
 ```
 
-| 代号 | 检查 |
+| ID | Check |
 | --- | --- |
-| A | destination 存在、有 SKILL.md、文件指纹与 manifest 一致 |
-| B | 每条入口链接都是指向库内的有效符号链接 |
-| C | 各工具入口目录的实际条目与 manifest 完全对应 |
-| D | frontmatter 的 `name`/`description` 合法、无重名 |
-| E | 平台专用 Skill 未泄漏到公共入口 |
-| F | 入口目录无 `.git` / `.DS_Store` / `__pycache__` |
-| G | 库内目录与 manifest 双向对应，无漏编 |
-| H | 无同哈希的重复 Skill |
+| A | destination exists, SKILL.md present, fingerprint matches the manifest |
+| B | every entry link is a valid symlink pointing inside the library |
+| C | each tool's entry directory matches the manifest exactly |
+| D | frontmatter `name`/`description` valid, no duplicate names |
+| E | platform-specific skills not leaked into shared entries |
+| F | no `.git` / `.DS_Store` / `__pycache__` in entry directories |
+| G | library directories and manifest agree in both directions |
+| H | no two skills share a fingerprint |
 
-### 接入：`tools/check_integrations.py`
+### Integration: `tools/check_integrations.py`
 
-`health.py` 只看库内是否自洽，这个脚本看外部工具是否仍正确指向本库：四个入口根目录、cc-switch 同步方式、Hermes 外部目录清单、Kimi 插件注册表、`kimi.plugin.json` 共享路径。
+`health.py` only checks internal consistency. This script checks that external
+tools still point at the library: the four entry roots, cc-switch's sync method,
+Hermes' external directory list, the Kimi plugin registry, and the shared paths
+in `kimi.plugin.json`.
 
-### 登记：`tools/register_skill.py`
+### Registration: `tools/register_skill.py`
 
-新增 Skill 不再是手工改 manifest。脚本先校验目录与 frontmatter，再写 manifest、建入口链接、同步 Hermes 清单、重建 CATALOG，最后自动跑两项检查——任一步失败全部回滚。
+Adding a skill is no longer a manual manifest edit. The script validates the
+directory and frontmatter, writes the manifest entry, creates entry links, syncs
+the Hermes list, rebuilds the catalogue, and then runs both checks — rolling
+everything back if any step fails.
 
 ```bash
 python3 tools/register_skill.py --name <skill> --dry-run
 python3 tools/register_skill.py --name <skill>
 ```
 
-### 溯源与安全更新：`skill-update-guard/`
+### Tracing and safe updates: `skill-update-guard/`
 
 ```bash
-python3 skill-update-guard/scripts/trace.py                      # 只读溯源
-python3 skill-update-guard/scripts/update.py --name X --dry-run  # 演练
-python3 skill-update-guard/scripts/update.py --name X --confirm  # 写入
+python3 skill-update-guard/scripts/trace.py                      # read-only trace
+python3 skill-update-guard/scripts/update.py --name X --dry-run  # preview
+python3 skill-update-guard/scripts/update.py --name X --confirm  # write
 ```
 
-`trace.py` 全机发现 → 按真实路径去重 → 按来源聚类 → 核验来源 → 只读比对上游。无法溯源的会自行寻找线索但**只找不装**。
+`trace.py` discovers every skill on the machine, de-duplicates by realpath,
+clusters by source, vets each source, and compares against upstream. Anything
+without a traceable origin gets a local-only search for clues.
 
-`update.py` 只更新已溯源且有更新的项：git 类只允许 `merge --ff-only`；复制类克隆到临时目录扫描后 `rsync --delete` 干净替换。两者写入前都备份，写入后自动重新对齐 manifest 指纹。
+`update.py` only touches what is traceable and actually behind. Git installs are
+fast-forward only; copy installs are cloned into a temp directory, scanned, then
+replaced with `rsync --delete`. Both archive before writing and realign the
+manifest fingerprint afterwards.
 
-## 安全模型
+## Safety model
 
-Skill 是从网上来的代码和指令，更新它是一次**供应链操作**。四条不可协商的原则：
+A skill is code and instructions that came from the internet; updating one is a
+**supply-chain operation**. Four non-negotiable rules:
 
-1. **只读检索不碰本地仓库** —— `git ls-remote` 不 fetch、不写 object
-2. **本地改动一律不动** —— 工作树脏就停下报告，绝不 `reset --hard` / `checkout` / `clean`
-3. **只允许快进** —— 分叉交给人，不做 merge、不做 rebase
-4. **更新后必须重对齐指纹** —— 否则体检会报内容不匹配，看起来像库坏了
+1. **Read-only retrieval never touches the local repository** — `git ls-remote`
+   does not fetch and writes no objects
+2. **Local changes are never touched** — a dirty working tree stops the update;
+   no `reset --hard`, no `checkout`, no `clean`
+3. **Fast-forward only** — a diverged branch goes to a human; no merge, no rebase
+4. **Fingerprints are realigned after every update** — otherwise the health
+   check reports a content mismatch and the library looks broken
 
-写入前扫描高危模式（`curl|bash`、base64 管道执行、`rm -rf /`、读 `~/.ssh/id_rsa`、指令覆盖话术、反弹 shell），命中即拒绝。
+Before writing, incoming content is scanned for high-severity patterns
+(`curl|bash`, base64 piped into a shell, `rm -rf /`, reading `~/.ssh/id_rsa`,
+instruction-override phrasing, reverse shells). A hit refuses the write.
 
-## 工程记录
+## Engineering notes
 
-真正花时间的不是写出功能，是让工具**不说假话**。见 [`docs/ENGINEERING.md`](docs/ENGINEERING.md)，其中包括：
+The hard part was not writing the features — it was making the tools **stop
+saying things that are not true**. See
+[docs/ENGINEERING.md](docs/ENGINEERING.md), which covers:
 
-- 溯源时未 fetch 就断言"已分叉"，把可快进的更新误报成冲突
-- 文档里引用的依赖库主页被当成 Skill 来源（`matplotlib` → `matplotlib/matplotlib`）
-- `\bexec\(` 命中 JavaScript 的正则方法 `.exec(font)`
-- NUL 字节检测把 png/woff 素材当成可疑二进制
-- `rsync` 时把临时克隆的 `.git` 一并复制进 Skill 目录，让复制安装类被误判成 git 类
-- YAML 库回写 `~/.hermes/config.yaml` 会抹掉全部 32 行注释
+- declaring "diverged" before fetching, turning a fast-forwardable update into a
+  phantom conflict
+- a documentation skill's dependency homepage being mistaken for its origin
+  (`matplotlib` → `matplotlib/matplotlib`)
+- `\bexec\(` matching JavaScript's RegExp method `.exec(font)`
+- NUL-byte detection treating png/woff assets as suspicious binaries
+- `rsync` copying a temporary clone's `.git` into a skill directory, making a
+  copy install look like a git install
+- a YAML round-trip that would have erased all 32 comment lines in a config file
 
-## 快速开始
+## Quick start
 
-需要 Python 3.9+；登记与接入检查额外需要 PyYAML。
+Python 3.9+; the registration and integration checks additionally need PyYAML.
 
 ```bash
 python3 tools/health.py
 ```
 
-路径默认为 `~/Skills`，可用环境变量覆盖：
+Paths default to `~/Skills` and can be overridden:
 
 ```bash
 SKILLS_ROOT=/path/to/Skills python3 tools/health.py
 ```
 
-## 说明
+## Scope
 
-本仓库只包含管理系统的代码与文档。被管理的 Skill 各自属于其原作者，持有各自的许可证，**不随本仓库分发**——`examples/` 下只有脱敏节选，用于展示数据结构。
+This repository contains only the management system's code and documentation.
+The skills it manages belong to their respective authors and carry their own
+licences; **they are not distributed here**. The `examples/` directory holds
+redacted excerpts purely to illustrate the data structures.
 
 ## License
 
-MIT，见 [LICENSE](../LICENSE)。
+MIT — see the repository-root [LICENSE](../LICENSE).

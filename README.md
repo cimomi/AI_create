@@ -4,67 +4,77 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
 
-我的 AI 相关作品集。**每个项目一个独立子目录**，可单独阅读与运行。
+A portfolio of AI-related projects. **Each project lives in its own top-level
+directory** and can be read and run on its own.
 
 ---
 
-## 项目
+## Projects
 
-### [skill-library-manager](skill-library-manager/) · Skill 库管理系统
+### [skill-library-manager](skill-library-manager/) · Skill library management
 
-把散落在 **10 个 AI 工具**（Codex、Claude Code、Gemini CLI、Kimi、Hermes、Pi 等）里的 Skill
-收敛成**单一可信来源**：一份实体文件，各工具通过符号链接读取，所有内容有指纹登记、
-有完整性校验、有可验证的安全更新通道。
+Consolidates skills scattered across **10 AI tools** (Codex, Claude Code,
+Gemini CLI, Kimi, Hermes, Pi and others) into a **single source of truth**: one
+real copy on disk, symlinked into every harness, with fingerprints, integrity
+checks, and a verifiable update path.
 
 | | |
 | --- | --- |
-| 管理规模 | 121 个 Skill、313 条入口链接、10 类工具接入 |
-| 校验能力 | 8 类完整性检查 + 9 项跨工具接入检查 |
-| 更新安全 | 只读溯源、来源核验、快进限定、干净替换、风险扫描、自动回滚 |
-| 技术栈 | Python 3 · git · 符号链接 · 内容指纹 |
+| Scale | 121 skills, 313 entry links, 10 tool integrations |
+| Verification | 8 integrity checks + 9 cross-tool integration checks |
+| Update safety | read-only tracing, source vetting, fast-forward only, clean replace, risk scanning, automatic rollback |
+| Stack | Python 3 · git · symlinks · content fingerprints |
 
-**核心特点**：不是"功能多"，而是**工具说的话可信**。项目里的
-[工程记录](skill-library-manager/docs/ENGINEERING.md) 记录了九条真实踩坑——每一条都是
-"工具给出了看起来合理但错误的结论"，以及如何修正。
+**What makes it worth reading**: not the feature count, but that **the tools can
+be trusted to say the truth**. The project's
+[engineering notes](skill-library-manager/docs/ENGINEERING.md) record nine real
+bugs — each one a case where a tool produced a plausible but *wrong* answer, and
+how it was fixed.
 
 ---
 
-## 仓库约定
+## Repository conventions
 
-### 推送前强制安全审计
+### Mandatory security audit before pushing
 
-本仓库公开，**推送前自动运行安全审计**，不通过即拒绝：
+This repository is public, and **a security audit runs before every push**. It
+fails closed.
 
-| 层 | 时机 | 覆盖 | 能否阻止泄漏 |
+| Layer | Timing | Covers | Can it prevent a leak? |
 | --- | --- | --- | --- |
-| `.githooks/pre-commit` | 提交前 | 暂存区密钥 + 当前文件 | 能，可 `--no-verify` 绕过 |
-| `.githooks/pre-push` | 推送前 | **全部历史**密钥 + 绝对路径等 | 能，可 `--no-verify` 绕过 |
-| GitHub Actions CI | 推送**后** | 同上，服务端 | **不能**，只能发现与告警 |
-| GitHub Push Protection | 推送**时** | 平台已知凭证格式 | **能**，不可绕过 |
+| `.githooks/pre-commit` | before commit | staged secrets + current files | Yes, but `--no-verify` bypasses it |
+| `.githooks/pre-push` | before push | **full history** secrets + absolute paths | Yes, but `--no-verify` bypasses it |
+| GitHub Actions CI | **after** push | same, server-side | **No** — it detects and alerts |
+| GitHub Push Protection | at push time | platform-known credential formats | **Yes**, and it cannot be bypassed |
 
-> 注意：CI 在推送完成之后才运行，所以它拦不住泄漏本身——真正能在推送当时拒绝的
-> 是 GitHub 原生的 Push Protection（需管理员在 Settings → Code security 开启）。
+> Note: CI runs *after* the push completes, so it cannot stop the leak itself.
+> GitHub's native Push Protection is the only layer that blocks at push time
+> (enable it under Settings → Code security).
 
 ```bash
-scripts/install-hooks.sh                  # 新克隆的机器执行一次
-python3 scripts/audit.py                  # 也可随时手动运行
-gitleaks git --config .gitleaks.toml      # 密钥扫描
+scripts/install-hooks.sh                  # once per fresh clone
+python3 scripts/audit.py                  # run manually at any time
+gitleaks git --config .gitleaks.toml      # secret scan
 ```
 
-**为什么必须扫全部历史**：一次泄漏哪怕后来删掉了，只要进过提交，就仍然留在 git
-对象里、仍然能通过 API 取到。只检查当前工作区挡不住这种情况。
+**Why the full history must be scanned**: once something is committed, deleting
+the file is not enough — the object stays in the repository and remains
+retrievable through the API. Checking only the working tree misses exactly that
+case.
 
-详见 [SECURITY.md](SECURITY.md)。
+See [SECURITY.md](SECURITY.md) for details.
 
-### 新增作品
+### Adding a project
 
-1. 在仓库根新建项目目录，写自己的 `README.md`
-2. 在本文件的「项目」一节登记
-3. 确认项目内的绝对路径、密钥、第三方内容已被自己的 `.gitignore` 排除
-4. 提交时会自动触发安全审计
+1. Create a top-level directory and give it its own `README.md`
+2. Register it in the "Projects" section above
+3. Make sure absolute paths, secrets and third-party content are excluded by the
+   project's own `.gitignore`
+4. The security audit runs automatically on commit
 
 ---
 
 ## License
 
-MIT，见 [LICENSE](LICENSE)。各子目录若另有 LICENSE，以该目录为准。
+MIT — see [LICENSE](LICENSE). If a subdirectory carries its own LICENSE, that
+one applies there.

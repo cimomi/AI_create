@@ -1,28 +1,32 @@
 #!/usr/bin/env bash
-# 公开推送前的完整安全闸门。三层里的本地层。
+# Full security gate before a public push. This is the *local* layer.
 #
-#   1. gitleaks            密钥（含全部历史）
-#   2. scripts/audit.py    绝对路径、凭证文件、超大文件、疑似第三方内容（含全部历史）
-#   3. CI（服务端）        .github/workflows/security.yml —— 本地钩子可被 --no-verify 绕过，CI 不能
+#   1. gitleaks            secrets, across the whole history
+#   2. scripts/audit.py    absolute paths, credential files, oversized files,
+#                          probable third-party content — across the whole history
+#   3. CI (server-side)    .github/workflows/security.yml
+#                          Local hooks can be bypassed with --no-verify; CI cannot.
+#                          But CI runs *after* the push, so it detects rather than
+#                          prevents. GitHub Push Protection is what actually blocks.
 #
-# 任何一项不通过即拒绝推送。
+# Any failure refuses the push.
 set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 FAIL=0
 
 if command -v gitleaks >/dev/null 2>&1; then
-  echo "── gitleaks：扫描全部历史 ──"
+  echo "-- gitleaks: scanning the full history --"
   gitleaks git --no-banner --redact --config "$ROOT/.gitleaks.toml" || FAIL=1
 else
-  echo "警告：未安装 gitleaks（brew install gitleaks），密钥扫描缺一层。" >&2
+  echo "WARNING: gitleaks not installed (brew install gitleaks); one layer is missing." >&2
 fi
 
 echo
-echo "── 仓库审计：当前文件 + 全部历史 ──"
+echo "-- repository audit: current files + full history --"
 python3 "$ROOT/scripts/audit.py" || FAIL=1
 
 if [ "$FAIL" -ne 0 ]; then
   echo
-  echo "推送已阻止。修复后重试；不要用 --no-verify 绕过。" >&2
+  echo "Push blocked. Fix the findings and retry; do not use --no-verify." >&2
 fi
 exit $FAIL

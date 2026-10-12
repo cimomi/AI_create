@@ -1,82 +1,132 @@
 {
   "version": 1,
-  "_说明": "节选 2 条示例，仅展示结构；完整 manifest 由 tools/inventory.py 在本机生成，不随仓库分发。",
+  "_note": "Two entries shown to illustrate the structure. The full manifest is generated locally by tools/inventory.py and is not distributed with this repository. Paths are redacted to a ~ home prefix.",
   "entries": [
     {
-      "name": "darwin-skill",
+      "name": "code-reviewer",
       "scope": "common",
-      "destination": "~/Skills/common/darwin-skill",
+      "destination": "~/Skills/common/code-reviewer",
       "selected": {
         "source": "agents",
-        "path": "~/.agents/skills/darwin-skill",
-        "realpath": "~/.agents/skills/darwin-skill",
-        "folder": "darwin-skill",
-        "name": "darwin-skill",
+        "path": "~/.agents/skills/code-reviewer",
+        "realpath": "~/.agents/skills/code-reviewer",
+        "folder": "code-reviewer",
+        "name": "code-reviewer",
         "metadata": {
-          "name": "darwin-skill",
-          "description": "Darwin Skill 2.0 (达尔文.skill 2.0): autonomous skill optimizer, v2.0 integrates Microsoft Research SkillLens (arXiv 2605.23899) 9-dim rubric + SkillOpt (arXiv 2605.23904) validation-gated design + human-in-the-loop checkpoints. Evaluates SKILL.md files using a 9-dimension rubric (structure + effectiveness + meta-skill blacklists), runs hill-climbing with git version control, spawns independent judge agents for blind evaluation, validates improvements through test prompts with auto-break on diminishing returns, and generates visual result cards. Use when user mentions \"优化skill\", \"skill评分\", \"自动优化\", \"auto optimize\", \"skill质量检查\", \"达尔文\", \"darwin\", \"帮我改改skill\", \"skill怎么样\", \"提升skill质量\", \"skill review\", \"skill打分\"."
+          "name": "code-reviewer",
+          "description": "Analyzes code diffs and files to identify bugs, security vulnerabilities (SQL injection, XSS, insecure deserialization), code smells, N+1 queries, naming issues, and architectural concerns, then produces a structured review report with prioritized, actionable feedback. Use when reviewing pull requests, conducting code quality audits, identifying refactoring opportunities, or checking for security issues. Invoke for PR reviews, code quality checks, refactoring suggestions, review code, code quality. Complements specialized skills (security-reviewer, test-master) by providing broad-scope review across correctness, performance, maintainability, and test coverage in a single pass.",
+          "license": "MIT",
+          "allowed-tools": "Read, Grep, Glob",
+          "metadata": {
+            "author": "https://github.com/Jeffallan",
+            "company": "https://synergetic.solutions",
+            "version": "1.1.0",
+            "domain": "quality",
+            "triggers": "code review, PR review, pull request, review code, code quality",
+            "role": "specialist",
+            "scope": "review",
+            "output-format": "report",
+            "related-skills": "security-reviewer, test-master, architecture-designer"
+          }
         },
         "supplemental": {},
         "parse_error": null,
-        "sha256": "5e3d39ae5ef25f7d7cfe0f8ee4038eeb2e2452a984bb557b1fe86950e5cd1cd2",
+        "sha256": "872eb7db330fc7e9e0cacb5c3be6560005ff66cba8475fb42e994df041ed7e5e",
         "files": 7,
-        "skill_sha256": "3d57422079687a3aa641cb0c6c78ea8a5c6fa0c8645a37dfbcde4fdb870f7150",
-        "entry_mtime": 1791368189.1127176,
+        "skill_sha256": "f65c4468751bb509f4ff78b791dfbc664dfe6191d36d04626c92ed8c2174293b",
+        "entry_mtime": 1791368106.3445675,
         "symlink": false
       },
       "candidates": [
         {
           "source": "agents",
-          "path": "~/.agents/skills/darwin-skill",
-          "realpath": "~/.agents/skills/darwin-skill",
-          "folder": "darwin-skill",
-          "name": "darwin-skill",
+          "path": "~/.agents/skills/code-reviewer",
+          "realpath": "~/.agents/skills/code-reviewer",
+          "folder": "code-reviewer",
+          "name": "code-reviewer",
           "metadata": {
-            "name": "darwin-skill",
-            "description": "Darwin Skill 2.0 (达尔文.skill 2.0): autonomous skill optimizer, v2.0 integrates Microsoft Research SkillLens (arXiv 2605.23899) 9-dim rubric + SkillOpt (arXiv 2605.23904) validation-gated design + human-in-the-loop checkpoints. Evaluates SKILL.md files using a 9-dimension rubric (structure + effectiveness + meta-skill blacklists), runs hill-climbing with git version control, spawns independent judge agents for blind evaluation, validates improvements through test prompts with auto-break on diminishing returns, and generates visual result cards. Use when user mentions \"优化skill\", \"skill评分\", \"自动优化\", \"auto optimize\", \"skill质量检查\", \"达尔文\", \"darwin\", \"帮我改改skill\", \"skill怎么样\", \"提升skill质量\", \"skill review\", \"skill打分\"."
+            "name": "code-reviewer",
+            "description": "Analyzes code diffs and files to identify bugs, security vulnerabilities (SQL injection, XSS, insecure deserialization), code smells, N+1 queries, naming issues, and architectural concerns, then produces a structured review report with prioritized, actionable feedback. Use when reviewing pull requests, conducting code quality audits, identifying refactoring opportunities, or checking for security issues. Invoke for PR reviews, code quality checks, refactoring suggestions, review code, code quality. Complements specialized skills (security-reviewer, test-master) by providing broad-scope review across correctness, performance, maintainability, and test coverage in a single pass.",
+            "license": "MIT",
+            "allowed-tools": "Read, Grep, Glob",
+            "metadata": {
+              "author": "https://github.com/Jeffallan",
+              "company": "https://synergetic.solutions",
+              "version": "1.1.0",
+              "domain": "quality",
+              "triggers": "code review, PR review, pull request, review code, code quality",
+              "role": "specialist",
+              "scope": "review",
+              "output-format": "report",
+              "related-skills": "security-reviewer, test-master, architecture-designer"
+            }
           },
           "supplemental": {},
           "parse_error": null,
-          "sha256": "5e3d39ae5ef25f7d7cfe0f8ee4038eeb2e2452a984bb557b1fe86950e5cd1cd2",
+          "sha256": "872eb7db330fc7e9e0cacb5c3be6560005ff66cba8475fb42e994df041ed7e5e",
           "files": 7,
-          "skill_sha256": "3d57422079687a3aa641cb0c6c78ea8a5c6fa0c8645a37dfbcde4fdb870f7150",
-          "entry_mtime": 1791368189.1127176,
+          "skill_sha256": "f65c4468751bb509f4ff78b791dfbc664dfe6191d36d04626c92ed8c2174293b",
+          "entry_mtime": 1791368106.3445675,
           "symlink": false
         },
         {
           "source": "claude",
-          "path": "~/.claude/skills/darwin-skill",
-          "realpath": "~/.claude/skills/darwin-skill",
-          "folder": "darwin-skill",
-          "name": "darwin-skill",
+          "path": "~/.claude/skills/code-reviewer",
+          "realpath": "~/.claude/skills/code-reviewer",
+          "folder": "code-reviewer",
+          "name": "code-reviewer",
           "metadata": {
-            "name": "darwin-skill",
-            "description": "Darwin Skill 2.0 (达尔文.skill 2.0): autonomous skill optimizer, v2.0 integrates Microsoft Research SkillLens (arXiv 2605.23899) 9-dim rubric + SkillOpt (arXiv 2605.23904) validation-gated design + human-in-the-loop checkpoints. Evaluates SKILL.md files using a 9-dimension rubric (structure + effectiveness + meta-skill blacklists), runs hill-climbing with git version control, spawns independent judge agents for blind evaluation, validates improvements through test prompts with auto-break on diminishing returns, and generates visual result cards. Use when user mentions \"优化skill\", \"skill评分\", \"自动优化\", \"auto optimize\", \"skill质量检查\", \"达尔文\", \"darwin\", \"帮我改改skill\", \"skill怎么样\", \"提升skill质量\", \"skill review\", \"skill打分\"."
+            "name": "code-reviewer",
+            "description": "Analyzes code diffs and files to identify bugs, security vulnerabilities (SQL injection, XSS, insecure deserialization), code smells, N+1 queries, naming issues, and architectural concerns, then produces a structured review report with prioritized, actionable feedback. Use when reviewing pull requests, conducting code quality audits, identifying refactoring opportunities, or checking for security issues. Invoke for PR reviews, code quality checks, refactoring suggestions, review code, code quality. Complements specialized skills (security-reviewer, test-master) by providing broad-scope review across correctness, performance, maintainability, and test coverage in a single pass.",
+            "license": "MIT",
+            "allowed-tools": "Read, Grep, Glob",
+            "metadata": {
+              "author": "https://github.com/Jeffallan",
+              "version": "1.1.0",
+              "domain": "quality",
+              "triggers": "code review, PR review, pull request, review code, code quality",
+              "role": "specialist",
+              "scope": "review",
+              "output-format": "report",
+              "related-skills": "security-reviewer, test-master, architecture-designer"
+            }
           },
           "supplemental": {},
           "parse_error": null,
-          "sha256": "81f661649ab4c3908a7fc3c19e3ad986e4202722e7053e443872b97b87575ebc",
-          "files": 36,
-          "skill_sha256": "c3220018f42a3d4cfb242c449df47fd72907670b52d5f00a59179065837044a8",
-          "entry_mtime": 1783561385.579683,
+          "sha256": "28ef22e31e86cd4c11d71e6a1bad460207f998ece1216f2d0d2b69a34106fecb",
+          "files": 7,
+          "skill_sha256": "8f0ddb7d90178b6986f8d597ab0bc93ec01adb044bd27b75e1682b06902dae93",
+          "entry_mtime": 1779862776.032569,
           "symlink": false
         },
         {
           "source": "cc-switch",
-          "path": "~/.cc-switch/skills/darwin-skill",
-          "realpath": "~/.cc-switch/skills/darwin-skill",
-          "folder": "darwin-skill",
-          "name": "darwin-skill",
+          "path": "~/.cc-switch/skills/code-reviewer",
+          "realpath": "~/.cc-switch/skills/code-reviewer",
+          "folder": "code-reviewer",
+          "name": "code-reviewer",
           "metadata": {
-            "name": "darwin-skill",
-            "description": "Darwin Skill 2.0 (达尔文.skill 2.0): autonomous skill optimizer, v2.0 integrates Microsoft Research SkillLens (arXiv 2605.23899) 9-dim rubric + SkillOpt (arXiv 2605.23904) validation-gated design + human-in-the-loop checkpoints. Evaluates SKILL.md files using a 9-dimension rubric (structure + effectiveness + meta-skill blacklists), runs hill-climbing with git version control, spawns independent judge agents for blind evaluation, validates improvements through test prompts with auto-break on diminishing returns, and generates visual result cards. Use when user mentions \"优化skill\", \"skill评分\", \"自动优化\", \"auto optimize\", \"skill质量检查\", \"达尔文\", \"darwin\", \"帮我改改skill\", \"skill怎么样\", \"提升skill质量\", \"skill review\", \"skill打分\"."
+            "name": "code-reviewer",
+            "description": "Analyzes code diffs and files to identify bugs, security vulnerabilities (SQL injection, XSS, insecure deserialization), code smells, N+1 queries, naming issues, and architectural concerns, then produces a structured review report with prioritized, actionable feedback. Use when reviewing pull requests, conducting code quality audits, identifying refactoring opportunities, or checking for security issues. Invoke for PR reviews, code quality checks, refactoring suggestions, review code, code quality. Complements specialized skills (security-reviewer, test-master) by providing broad-scope review across correctness, performance, maintainability, and test coverage in a single pass.",
+            "license": "MIT",
+            "allowed-tools": "Read, Grep, Glob",
+            "metadata": {
+              "author": "https://github.com/Jeffallan",
+              "version": "1.1.0",
+              "domain": "quality",
+              "triggers": "code review, PR review, pull request, review code, code quality",
+              "role": "specialist",
+              "scope": "review",
+              "output-format": "report",
+              "related-skills": "security-reviewer, test-master, architecture-designer"
+            }
           },
           "supplemental": {},
           "parse_error": null,
-          "sha256": "cc0e1e13279ea085ab9218c5a64c9cb4f4294546b7075be93b8399185d1041c6",
-          "files": 35,
-          "skill_sha256": "c3220018f42a3d4cfb242c449df47fd72907670b52d5f00a59179065837044a8",
-          "entry_mtime": 1780641681.0,
+          "sha256": "28ef22e31e86cd4c11d71e6a1bad460207f998ece1216f2d0d2b69a34106fecb",
+          "files": 7,
+          "skill_sha256": "8f0ddb7d90178b6986f8d597ab0bc93ec01adb044bd27b75e1682b06902dae93",
+          "entry_mtime": 1779862776.032569,
           "symlink": false
         }
       ],
@@ -96,7 +146,7 @@
         "name": "skill-update-guard",
         "metadata": {
           "name": "skill-update-guard",
-          "description": "Use when 需要检查本机从 GitHub 克隆的 skill 有没有新版本、准备把某个 skill 更新到上游、或要判断某次 skill 更新是否安全可应用。触发词：检查skill更新、更新skill、skill落后了吗、skill是不是最新、升级skill、skill outdated、skill update、这个skill更新安全吗、更新完校验。也适用于目录带 .git 的 skill、或更新后 manifest 指纹需要重新对齐的场景。不用于花叔系复制安装的 skill（走 huashu-skill-updater），也不用于改写 SKILL.md 正文（走 darwin-skill）。"
+          "description": "Use when the user wants to check or update the skills installed on this machine, or when a skill directory carries a .git repository or .huashu-skill-meta.json and its provenance needs establishing."
         },
         "supplemental": {},
         "parse_error": null,
@@ -115,7 +165,7 @@
           "name": "skill-update-guard",
           "metadata": {
             "name": "skill-update-guard",
-            "description": "Use when 需要检查本机从 GitHub 克隆的 skill 有没有新版本、准备把某个 skill 更新到上游、或要判断某次 skill 更新是否安全可应用。触发词：检查skill更新、更新skill、skill落后了吗、skill是不是最新、升级skill、skill outdated、skill update、这个skill更新安全吗、更新完校验。也适用于目录带 .git 的 skill、或更新后 manifest 指纹需要重新对齐的场景。不用于花叔系复制安装的 skill（走 huashu-skill-updater），也不用于改写 SKILL.md 正文（走 darwin-skill）。"
+            "description": "Use when the user wants to check or update the skills installed on this machine, or when a skill directory carries a .git repository or .huashu-skill-meta.json and its provenance needs establishing."
           },
           "supplemental": {},
           "parse_error": null,

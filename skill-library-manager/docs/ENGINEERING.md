@@ -1,123 +1,196 @@
-# 工程记录
+# Engineering notes
 
-这份文档记录的是**真实踩过的坑**。工具链的价值不在功能多，而在于它说的话可信——下面每一条都是"工具给出了错误结论"的实际案例。
+This document records **real mistakes that were made**. The value of a
+toolchain is not its feature count but whether what it says can be trusted —
+and every entry below is a case where a tool produced a *plausible but wrong*
+answer.
 
-## 1. 未 fetch 就断言"已分叉"
+## 1. Declaring "diverged" before fetching
 
-**现象**：溯源报告把一次可正常快进的更新标成"已分叉，需人工处理"。
+**Symptom**: the trace report labelled a perfectly fast-forwardable update as
+"diverged, needs manual handling".
 
-**原因**：判断祖先关系用 `git merge-base --is-ancestor <local> <remote>`，但溯源阶段是只读的，远端 commit 还没 fetch 到本地。`git` 对不存在的对象返回非零，代码把非零当成了"不是祖先"。
+**Cause**: ancestry was tested with `git merge-base --is-ancestor <local>
+<remote>`, but the trace phase is read-only and the remote commit had not been
+fetched. `git` returns non-zero for an object it does not have, and the code
+read that non-zero as "not an ancestor".
 
-**修正**：先 `git cat-file -e <sha>` 确认对象存在，不存在就返回"无法判断"，把快进可行性留到更新阶段（那时已 fetch）判定。
+**Fix**: check that the object exists first (`git cat-file -e <sha>`); if it does
+not, return *undecidable* and leave the fast-forward decision to the update
+phase, where the objects are present.
 
 ```python
 def is_ancestor(path, old, new):
     if cat_file_missing(new):
-        return None          # 无法判断，绝不猜
+        return None          # cannot determine - never guess
     return merge_base_is_ancestor(old, new)
 ```
 
-**教训**：三态（是 / 否 / 不知道）比布尔值更诚实。把"不知道"压成"否"，用户就会看到不存在的冲突。
+**Lesson**: three states (yes / no / unknown) are more honest than a boolean.
+Squashing "unknown" into "no" shows the user a conflict that does not exist.
 
-## 2. 把依赖库主页当成 Skill 来源
+## 2. Mistaking a dependency's homepage for a skill's origin
 
-**现象**：给 `matplotlib`、`polars`、`sympy`、`markitdown` 等 Skill 报出了"疑似来源"，指向的却是这些库自己的 GitHub 仓库。
+**Symptom**: the tool reported "probable origin" for `matplotlib`, `polars`,
+`sympy`, `markitdown` and friends — pointing at those libraries' own GitHub
+repositories.
 
-**原因**：第一版线索提取是"扫 SKILL.md 里的 GitHub URL + 名字相同或同行出现 install"。而这些 Skill 是**文档型 Skill**，正文里本来就会写 `pip install polars` 和项目主页链接——名字还正好相同。
+**Cause**: the first version extracted "GitHub URL + same name, or the word
+install on the same line". But these are **documentation skills**: their text
+naturally contains `pip install polars` and a link to the project homepage — and
+the name matches too.
 
-**修正**：按置信度分级，只有满足下面之一才算高可信：
-- 出现在安装元数据文件里（`.huashu-skill-meta.json` / `plugin.json`）
-- 仓库路径带 `skill`/`claude`/`agent`/`plugin` 特征词，且同一行是出处语义
+**Fix**: grade by confidence. Only these count as high:
+- the URL appears in an installation metadata file
+  (`.huashu-skill-meta.json` / `plugin.json`)
+- the repository path carries `skill`/`claude`/`agent`/`plugin` and the same
+  line reads as a provenance statement
 
-依赖安装语句（`pip|npm|brew install`）直接降级。修正后高可信假阳性从 7 个降到 0。
+Dependency install commands (`pip|npm|brew install`) are downgraded. High-
+confidence false positives went from 7 to 0.
 
-**教训**：名字相同不是证据。`matplotlib` 这个 Skill 叫这个名字，是因为它**讲的是** matplotlib。
+**Lesson**: a matching name is not evidence. The `matplotlib` skill is called
+that because it *is about* matplotlib.
 
-## 3. `\bexec\(` 命中 JavaScript 正则方法
+## 3. `\bexec\(` matching JavaScript's RegExp method
 
-**现象**：安全扫描把 `const m = /"([^"]+)"/.exec(font)` 报成"动态求值执行"。
+**Symptom**: the safety scan flagged `const m = /"([^"]+)"/.exec(font)` as
+"dynamic evaluation".
 
-**原因**：`\b` 的词边界在 `.` 和 `e` 之间成立，所以 `.exec(` 匹配了 `\bexec\(`。而 `.exec()` 是 JS 正则的标准方法，几乎所有前端代码都有。
+**Cause**: `\b` holds between `.` and `e`, so `.exec(` matched `\bexec\(`. And
+`.exec()` is the standard JavaScript RegExp method — it is everywhere.
 
-**修正**：加负向后顾 `(?<![.\w])exec\s*\(`，排除前面是 `.` 或词字符的情况。`eval` 同理。
+**Fix**: add a negative lookbehind, `(?<![.\w])exec\s*\(`, so a preceding `.` or
+word character is excluded. Same for `eval`.
 
-**教训**：正则要拿真实代码库试，不能只在脑子里过。
+**Lesson**: test regexes against a real codebase, not against your imagination.
 
-## 4. NUL 字节检测把图片当成可疑二进制
+## 4. NUL-byte detection treating images as suspicious binaries
 
-**现象**：更新 `huashu-art-motion` 时，126 个 png / woff 素材全部被报"可疑二进制"。
+**Symptom**: updating one skill reported all 126 png/woff asset files as
+"suspicious binaries".
 
-**原因**：用"前 1024 字节含 `\x00`"判断二进制——这会把**所有**二进制文件都算进去，包括正常的图片和字体。
+**Cause**: "first 1024 bytes contain `\x00`" classifies **every** binary file
+that way, including perfectly ordinary images and fonts.
 
-**修正**：只把可执行扩展名（`.exe`/`.dll`/`.so`/`.sh`…）算作可疑；图片、字体、压缩包归入"普通素材"，只计数不报警。
+**Fix**: only executable extensions (`.exe`/`.dll`/`.so`/`.sh`…) count as
+suspicious; images, fonts and archives go into an "ordinary asset" bucket that
+is counted but never reported.
 
-**教训**：报警要针对"可疑"，不是针对"二进制"。分不清这两者，工具就会被用户忽略。
+**Lesson**: alerts should target *suspicious*, not *binary*. Conflating the two
+teaches the user to ignore the tool.
 
-## 5. `rsync` 把临时克隆的 `.git` 复制进了 Skill 目录
+## 5. `rsync` copying a temporary clone's `.git` into a skill directory
 
-**现象**：更新一个复制安装的 Skill 后，它多出了一个 `.git` 目录。
+**Symptom**: after updating a copy-installed skill, it gained a `.git`
+directory.
 
-**原因**：干净替换用的是 `rsync -a --delete <克隆目录>/ <Skill目录>/`，排除了本库自己的管理文件，**但没排除 `.git`**。于是临时克隆（还是 `--depth 1` 浅克隆）的仓库被完整复制了进去。
+**Cause**: the clean replace ran
+`rsync -a --delete <clone>/ <skill>/` and excluded the library's own management
+files — **but not `.git`**. The temporary clone (a `--depth 1` shallow clone)
+was copied in wholesale.
 
-**后果**：该 Skill 下次会被识别成 git 类而非复制类，而浅克隆上的 `--ff-only` 很不稳。
+**Consequence**: the skill would subsequently be classified as a git install
+rather than a copy install, and fast-forwarding a shallow clone is unreliable.
 
-**修正**：把 `.git` 加入排除列表：
+**Fix**: add `.git` to the exclusion list.
 
 ```python
 RSYNC_EXCLUDES = ['.git', '.huashu-skill-meta.json', '.last-update-check']
 ```
 
-**教训**：讽刺的是，这个 bug 出现在一个专门防止"污染"的工具里。"干净替换"的排除列表必须显式枚举，不能想当然。
+**Lesson**: the irony is that this bug appeared in a tool whose entire purpose is
+preventing pollution. A clean replace's exclusion list must be explicit — never
+assumed.
 
-## 6. YAML 库回写会抹掉配置注释
+## 6. A YAML round-trip would have erased the config comments
 
-**现象**：登记脚本需要往 `~/.hermes/config.yaml` 的 `skills.external_dirs` 加一项。
+**Symptom**: the registration script needed to append one entry to
+`skills.external_dirs` in `~/.hermes/config.yaml`.
 
-**原因**：直觉做法是 `yaml.safe_load` → 改 → `yaml.safe_dump`。但该文件有 **32 行注释**，safe_dump 会全部丢弃。
+**Cause**: the obvious approach is `yaml.safe_load` → modify → `yaml.safe_dump`.
+But that file carries **32 comment lines**, and `safe_dump` discards all of them.
 
-**修正**：改成文本级插入——定位 `external_dirs:` 行，向后收集连续列表项，按序插入一行。实测只增 1 行、注释 32→32、其余配置语义完全不变。
+**Fix**: do a text-level insertion — locate the `external_dirs:` line, collect
+the consecutive list items that follow, and splice in one line in sorted
+position. Measured: one line added, comments 32 → 32, and every other setting
+semantically identical.
 
-另外两处细节：
-- 判重必须比较**直连目标**而不是完全解析后的路径。`.cc-switch/skills/dogfood` 指向库内 `managed/hermes/dogfood`，再由 `managed/hermes` 中转回 `~/.hermes`——完全解析后落在库外，但那是对的设计。
-- manifest 的 Hermes 清单必须与配置文件**逐项同序**，否则逐项比对的强不变量会报错。
+Two related details:
+- De-duplication must compare the **direct link target**, not the fully resolved
+  path. `.cc-switch/skills/dogfood` points at the library's
+  `managed/hermes/dogfood`, which itself links through to `~/.hermes` — so the
+  resolved path lands outside the library even though the design is correct.
+- The manifest's Hermes list must match the config file **item for item and in
+  order**, or the positional comparison in the integration check fails.
 
-**教训**：别人的配置文件是别人的。改它要像做手术，不要像做整容。
+**Lesson**: someone else's config file is someone else's. Edit it like a
+surgeon, not like a cosmetician.
 
-## 7. 缓存写在被测目录里
+## 7. A cache written inside the directory being checked
 
-**现象**：GitHub API 缓存文件最初放在 Skill 自己的目录下。
+**Symptom**: the GitHub API cache file originally lived inside the skill's own
+directory.
 
-**后果**：每次运行都会改写它，导致 Skill 的文件指纹变化，进而让完整性检查报"内容不匹配"——工具在检测自己的产物。
+**Consequence**: every run rewrote it, changing the skill's content fingerprint,
+which made the integrity check report a content mismatch — the tool was
+detecting its own output.
 
-**修正**：缓存移到库外 `~/.maintenance/` 下。
+**Fix**: move the cache outside the library, under `~/.maintenance/`.
 
-**教训**：任何会自我更新的状态，都不能放在被指纹覆盖的范围内。
+**Lesson**: any self-updating state must live outside the range covered by the
+fingerprint.
 
-## 8. 工具自己的运行产物被提交进了公开仓库
+## 8. A tool's own run artefact committed to a public repository
 
-**现象**：`tools/health.py` 跑一次会在同目录留下 `health-report.json`，而这份报告里含被检查项的**绝对路径**（`/Users/<用户名>/Skills/...`）。在仓库里跑了一次验证，随后 `git add -A` 把它一起提交并推送到了公开仓库。
+**Symptom**: running `tools/health.py` once leaves a `health-report.json` beside
+it, and that report contains **absolute paths** of everything it inspected. A
+verification run inside the repository was followed by `git add -A`, which
+committed and pushed the file to a public repository.
 
-**为什么脱敏检查没拦住**：同步脚本只扫描**白名单暂存区**。而这类文件不在白名单里——它是工具运行时自己冒出来的，属于"预期之外但真实存在"的产物。只检查"我打算提交什么"，检查不到"实际有什么"。
+**Why the existing check missed it**: the sync script only scanned the
+**whitelisted staging area**. This file is not on the whitelist — it is produced
+by the tool at runtime. Checking "what I intend to commit" cannot see "what is
+actually there".
 
-**修正**：
-1. `.gitignore` 规则从 `.health-report.json` 改为 `health-report.json`——原来的写法匹配不到 `tools/` 下的同名文件
-2. 同步脚本的脱敏检查扩展到**整个仓库工作区**，而不只是暂存区
-3. 已推送的泄漏用 `--amend` 改写提交并强推清除（该文件只存在于最后一个提交，无需重写全部历史），再 `reflog expire` + `gc --prune=now` 清掉本地悬空对象
+**Fix**:
+1. `.gitignore` changed from `.health-report.json` to `health-report.json` —
+   the original pattern did not match a file inside `tools/`
+2. The sync script's leak check now covers the **entire working tree**, not just
+   the staging area
+3. The already-pushed leak was removed with `--amend` plus a force push (the file
+   existed only in the newest commit, so no full history rewrite was needed),
+   followed by `reflog expire` and `gc --prune=now` to drop the local dangling
+   objects
 
-**教训**：安全边界要画在**输出**上，不是**意图**上。检查"我准备提交哪些文件"永远不如检查"仓库里现在有什么"可靠——因为泄漏通常来自你没打算提交的那个文件。
+**Lesson**: draw the security boundary around the **output**, not the
+**intention**. Checking "which files am I about to commit" is never as reliable
+as checking "what is in the repository right now" — because the leak is usually
+the file you had no intention of committing.
 
-## 9. 陈旧 git 仓库的误还原风险
+## 9. The risk of a stale git repository silently reverting a migration
 
-**现象**：`~/.claude/skills/.git` 是迁移前的仓库，迁移后工作树已不一致（1217 个跟踪文件显示为 deleted，116 个符号链接为 untracked）。
+**Symptom**: `~/.claude/skills/.git` was the pre-migration repository, and its
+working tree no longer matched what the migration had done (1217 tracked files
+reported as deleted, 116 symlinks untracked).
 
-**风险**：任何一次 `git checkout .` 或 `git clean -fd` 都会把迁移前的**重复目录**整批还原回来，直接破坏"单一实体 + 链接"的设计。
+**Risk**: any `git checkout .` or `git clean -fd` would have restored the
+pre-migration **duplicate directories** wholesale, undoing the single-source
+design.
 
-**处理**：确认其历史已由 `manifest.json` 的指纹与恢复快照覆盖后删除，并保留提交摘要备查。
+**Resolution**: after confirming its history was already covered by the
+manifest fingerprints and the recovery snapshot, the repository was deleted and
+its commit summary retained for reference.
 
-**教训**：结构改变后，留在原地的旧版本控制元数据是一颗定时炸弹。它不报错，只是在某天没人注意的时候生效。
+**Lesson**: after a structural change, version-control metadata left in place is
+a time bomb. It does not complain — it simply takes effect one day when nobody
+is looking.
 
-## 一条通用原则
+## One general principle
 
-> **工具可信，比工具强大重要。**
+> **A tool that can be trusted matters more than a tool that is powerful.**
 
-上面每一条都不是功能缺失，而是工具给出了**看起来合理但错误**的结论——或者工具本身制造了新的风险。一个会说假话、或会悄悄泄漏数据的检查工具，比没有检查工具更危险，因为你会信它。
+None of the entries above is a missing feature. Each is a case where a tool gave
+a **plausible but wrong** answer — or where the tool itself created a new risk.
+A checking tool that lies, or that quietly leaks data, is more dangerous than no
+checking tool at all, because you will believe it.

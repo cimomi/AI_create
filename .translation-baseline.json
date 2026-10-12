@@ -1,0 +1,15 @@
+{
+  "note": "sha256 of the local source file at the time its English translation was made",
+  "sources": {
+    "tools/_paths.py": "70ce810abef240d831474c81687f83c13d61a01758ba0d23a9e523712148c5e1",
+    "tools/inventory.py": "2a44e3e32676fd8b2c463cd4bdd39787a01715f0182119ca6c5adad2a8980909",
+    "tools/health.py": "4c4b23eefc7c1294fa14ec2d6d9f068d8d244cad08c03190e8ebefb59c24da04",
+    "tools/check_integrations.py": "0f028b401f345163f824e61f8a70b353bde8ce121f3272dbdf62f00036275a2c",
+    "tools/register_skill.py": "9b25d7ac0ce599be5753af17386889e1c031fe1ee04c3939d2ee8023451b8a0c",
+    "tools/build_catalog.py": "51f58eeba5f78859280666d3b7d14f46a253848f1e0f3f3d9b4b7334ba81fcef",
+    "skill-update-guard/SKILL.md": "5dae4f94992d47f891d25d20fc3396cacff9ffeb68c4b60cad9d1a0525a5ed39",
+    "skill-update-guard/scripts/sources.py": "b7cd8e0145600755a97ba14394ca5a97bdf4b2c084669064e8cdfad7d428b58e",
+    "skill-update-guard/scripts/trace.py": "606e09bf732bb9f4486b5f8b7f530af4ba5d937e0b30904d89f8fa7bbb12d4ad",
+    "skill-update-guard/scripts/update.py": "e9ffb91b22e0567947244cddfd550d1bd53912350845bbb252b6fcd767f51a88"
+  }
+}

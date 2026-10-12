@@ -1,24 +1,28 @@
 #!/usr/bin/env python3
-"""溯源：查清每个 skill 的安装来源、是否正规、上游是否有更新。
+"""Provenance tracing: where each skill came from, whether the source is
+legitimate, and whether upstream has anything newer.
 
-全程只读。不 clone、不 fetch 到工作目录、不下载任何内容。
-（git ls-remote 只读远端引用；GitHub API 只读元数据。二者都不写入本地仓库。）
+Entirely read-only. Nothing is cloned, fetched into a working tree, or
+downloaded. (`git ls-remote` only reads remote refs; the GitHub API only reads
+metadata. Neither writes to a local repository.)
 
-对无法溯源的 skill，会尝试自行寻找来源（查 SKILL.md 里的仓库链接、查 manifest 的
-原始来源记录、必要时按名字查 GitHub），但**只找不装**——结果汇总后交用户决定。
+For skills with no traceable origin, this tries to find one from local evidence
+only (repository links in SKILL.md, the recorded pre-migration source in the
+manifest). It never installs anything — findings are collected and handed back
+to the user to decide.
 
-用法：
-    python3 trace.py                      # 扫描全机并溯源
-    python3 trace.py --root DIR           # 限定范围（可重复）
+Usage:
+    python3 trace.py                      # scan the whole machine
+    python3 trace.py --root DIR           # restrict the scan (repeatable)
     python3 trace.py --json
-    python3 trace.py --no-api             # 不调用 GitHub API（省额度/离线）
+    python3 trace.py --no-api             # skip the GitHub API (offline / rate limits)
     python3 trace.py --timeout 30
 
-exit code：0 = 全部最新且无待处理；1 = 有可更新项或需要人工介入；2 = 出错。
+Exit code: 0 = everything current and nothing pending; 1 = updates available or
+manual attention required; 2 = error.
 """
 import argparse
 import json
-import os
 import re
 import sys
 from pathlib import Path
@@ -30,30 +34,32 @@ import sources as S  # noqa: E402
 
 CACHE_FILE = S.ROOT / '.maintenance/.skill-guard-github-cache.json'
 
-# 可被追踪上游的类型
+# Kinds whose upstream can be tracked.
 TRACEABLE = {'git', 'copy'}
 
 
 def remote_head(path, branch, url, timeout):
-    """只读获取远端分支 HEAD。branch 为空时尝试 HEAD。"""
+    """Read the remote branch HEAD. Falls back to HEAD when branch is unknown."""
     if branch:
-        code, out, err = S.run(['git', '-C', str(path), 'ls-remote', '--heads', url, branch],
-                               timeout=timeout)
+        code, out, _err = S.run(['git', '-C', str(path), 'ls-remote', '--heads', url, branch],
+                                timeout=timeout)
         if code == 0 and out:
             return out.split()[0], None
     code, out, err = S.run(['git', 'ls-remote', url, 'HEAD'], timeout=timeout)
     if code != 0:
-        return None, err or 'ls-remote 失败'
+        return None, err or 'ls-remote failed'
     if not out:
-        return None, '远端没有返回任何引用'
+        return None, 'remote returned no refs'
     return out.split()[0], None
 
 
 def is_ancestor(path, old, new, timeout=30):
-    """判断 old 是否为 new 的祖先。
+    """Whether `old` is an ancestor of `new`.
 
-    返回 True/False/None。None 表示**无法判断**：远端 commit 还没 fetch 到本地，
-    此时绝不能当成「已分叉」——那会把正常可快进的更新误报成冲突。
+    Returns True/False/None. None means *undecidable*: the remote commit has not
+    been fetched yet, so the relationship cannot be computed. It must never be
+    reported as "diverged" — that would turn a perfectly fast-forwardable update
+    into a phantom conflict.
     """
     code, _, _ = S.run(['git', '-C', str(path), 'cat-file', '-e', f'{new}^{{commit}}'],
                        timeout=timeout)
@@ -65,20 +71,25 @@ def is_ancestor(path, old, new, timeout=30):
 
 
 def find_source_hints(path):
-    """无法溯源时自行寻找线索：只在本地文件里找，不联网、不下载。
+    """Local-only hunt for a missing origin. No network, no downloads.
 
-    必须区分可信度。实测教训：只看「URL + 名字相同 + 出现 install」会把 skill
-    文档里引用的**依赖库主页**误判成 skill 来源（matplotlib / polars / sympy /
-    markitdown / exa-py 全部中招），进而在报告里给出错误的溯源结论。
+    Confidence grading is essential. A hard lesson: matching "URL + same name +
+    the word install" made documentation-only skills report their *dependency's*
+    homepage as their own origin (matplotlib, polars, sympy, markitdown and
+    exa-py all tripped this), producing confidently wrong provenance.
 
-    因此只有满足下列之一才计为 high：
-      - 出现在安装元数据文件（.huashu-skill-meta.json / plugin.json / package.json 的
-        repository 字段）里；
-      - 仓库路径带 skill/claude/agent/plugin 等特征词，且同一行是出处语义。
-    其余一律 low，并在报告里单独标注「疑似依赖库或参考资料」，不当作来源。
+    So `high` requires one of:
+      - the URL appears in an installation metadata file
+        (.huashu-skill-meta.json / plugin.json)
+      - the repository path carries skill/claude/agent/plugin keywords *and*
+        the same line reads as a provenance statement.
+    Everything else is `low` and is reported separately as "likely a dependency
+    or reference", never as an origin.
     """
     PROVENANCE_FILES = {'.huashu-skill-meta.json', 'plugin.json'}
     SKILLISH = re.compile(r'skill|claude|agent|plugin|prompt|awesome|persona', re.I)
+    # The Chinese alternatives below are deliberate: provenance statements in
+    # the local library are often written in Chinese. Not documentation.
     STRONG = re.compile(r'来源|出处|仓库地址|安装自|origin|source\s+repo|upstream\s+repo|'
                         r'git\s+clone|installed\s+from', re.I)
     DEP_INSTALL = re.compile(r'(pip|npm|yarn|pnpm|conda|brew|apt|uv|cargo|go)\s+(install|add)\b',
@@ -106,7 +117,7 @@ def find_source_hints(path):
             if name in PROVENANCE_FILES:
                 conf = 'high'
             elif DEP_INSTALL.search(line):
-                conf = 'low'          # 依赖安装语句，不是 skill 出处
+                conf = 'low'          # a dependency install command, not an origin
             elif SKILLISH.search(repo) and STRONG.search(line):
                 conf = 'high'
             elif SKILLISH.search(repo) and repo_name.lower() == skill_dir.lower():
@@ -125,10 +136,12 @@ def find_source_hints(path):
 
 
 def apply_inheritance(entities):
-    """嵌套在某个可溯源 skill 目录内的 skill，继承其来源。
+    """Skills nested inside a traceable bundle inherit that bundle's origin.
 
-    实测：15 个人物 skill 位于 common/nuwa-skill/examples/ 下，本身没有 git 或
-    安装元数据，但它们是 nuwa-skill 这个复制安装包的一部分，来源应当继承。
+    Observed in practice: the 15 persona skills live under
+    common/nuwa-skill/examples/. They have no .git and no install metadata of
+    their own, but they are part of the nuwa-skill copy-install, so their origin
+    is inherited from it.
     """
     donors = [e for e in entities if e.get('source') and e['source'].get('owner_repo')]
     for e in entities:
@@ -143,7 +156,7 @@ def apply_inheritance(entities):
 
 
 def manifest_origin(path):
-    """查 manifest 里记录的原始来源（迁移前的本地路径）。"""
+    """Look up the origin recorded in the manifest (pre-migration local path)."""
     mf = S.ROOT / 'manifest.json'
     if not mf.is_file():
         return None
@@ -176,14 +189,14 @@ def save_cache(cache):
 
 
 def trace_entity(e, timeout, use_api, api_cache):
-    """返回该 skill 的溯源与更新状态。"""
+    """Return the provenance and update status for one skill."""
     kind = e['kind']
     src = e.get('source')
     inherited = False
     if not src and e.get('inherited_source'):
         src = e['inherited_source']
         inherited = True
-        kind = 'copy'          # 按父级安装方式处理
+        kind = 'copy'          # handled like the parent's install method
         e = dict(e, kind=kind, source=src)
 
     out = dict(e)
@@ -195,11 +208,11 @@ def trace_entity(e, timeout, use_api, api_cache):
 
     if kind not in TRACEABLE:
         reason = {
-            'library': '库内自建/归并内容，未见上游记录',
-            'bundled': '应用内置，随该应用升级',
-            'harness-native': '框架自带技能，随该框架升级',
-            'unknown': '无 git 仓库也无安装元数据',
-        }.get(kind, '不可追踪的类型')
+            'library': 'authored in-library / consolidated, no upstream recorded',
+            'bundled': 'bundled with an application; updated with that application',
+            'harness-native': 'shipped with a harness; updated with that harness',
+            'unknown': 'no git repository and no install metadata',
+        }.get(kind, 'untraceable kind')
         out['update'] = 'untraceable'
         out['detail'] = reason
         out['hints'] = find_source_hints(e['path'])
@@ -211,11 +224,11 @@ def trace_entity(e, timeout, use_api, api_cache):
     url = src.get('url')
     if not url:
         out['update'] = 'untraceable'
-        out['detail'] = '安装元数据里没有可用的仓库地址'
+        out['detail'] = 'install metadata carries no usable repository URL'
         out['hints'] = find_source_hints(e['path'])
         return out
 
-    # ---- 来源正规性 ----
+    # ---- Source legitimacy ----
     legit_notes = []
     if e['risk']:
         legit_notes.append(e['risk'])
@@ -224,9 +237,10 @@ def trace_entity(e, timeout, use_api, api_cache):
         out['repo_meta'] = meta
         if meta.get('checked'):
             if meta.get('archived'):
-                legit_notes.append('上游仓库已归档（archived），不再维护')
+                legit_notes.append('upstream repository is archived (no longer maintained)')
             if meta.get('stars') is not None and meta['stars'] < 3:
-                legit_notes.append(f"上游仓库星数很低（{meta['stars']}），请确认是否是正主")
+                legit_notes.append(
+                    f"upstream has very few stars ({meta['stars']}); verify it is the real source")
             out['legit'] = 'ok' if not legit_notes else 'review'
         else:
             out['legit'] = 'unknown'
@@ -234,43 +248,45 @@ def trace_entity(e, timeout, use_api, api_cache):
         out['legit'] = 'ok' if not legit_notes else 'review'
     out['legit_notes'] = legit_notes
 
-    # ---- 上游更新 ----
+    # ---- Upstream update ----
     remote, err = remote_head(e['path'], src.get('branch'), url, timeout)
     if not remote:
         out['update'] = 'unknown'
-        out['detail'] = f'无法访问上游：{err}'
+        out['detail'] = f'cannot reach upstream: {err}'
         return out
     out['remote_commit'] = remote
     local = src.get('commit')
 
     if not local:
         out['update'] = 'unknown'
-        out['detail'] = '本地没有记录安装版本，无法比较'
+        out['detail'] = 'no installed version recorded locally; nothing to compare'
         return out
 
     if local == remote:
         out['update'] = 'current'
-        out['detail'] = f'已是最新（{local[:7]}）'
+        out['detail'] = f'up to date ({local[:7]})'
         return out
 
     out['update'] = 'outdated'
-    out['detail'] = f'本地 {local[:7]} → 远端 {remote[:7]}'
+    out['detail'] = f'local {local[:7]} -> remote {remote[:7]}'
     if kind == 'git':
         ff = is_ancestor(e['path'], local, remote, timeout)
         out['fast_forward'] = ff
         if ff is False:
-            out['detail'] += '（已分叉，需人工处理）'
+            out['detail'] += ' (diverged, needs manual handling)'
         elif ff is None:
-            out['detail'] += '（未 fetch，快进可行性在更新时判定）'
+            out['detail'] += ' (not fetched; fast-forward decided at update time)'
     return out
 
 
 def main():
-    ap = argparse.ArgumentParser(description='溯源 skill 来源与上游更新（只读）')
-    ap.add_argument('--root', action='append', default=None, help='限定扫描目录，可重复')
+    ap = argparse.ArgumentParser(
+        description='Trace skill provenance and upstream updates (read-only)')
+    ap.add_argument('--root', action='append', default=None,
+                    help='restrict the scan to this directory (repeatable)')
     ap.add_argument('--json', action='store_true')
-    ap.add_argument('--no-api', action='store_true', help='不调用 GitHub API')
-    ap.add_argument('--no-cache', action='store_true', help='忽略 API 缓存')
+    ap.add_argument('--no-api', action='store_true', help='skip the GitHub API')
+    ap.add_argument('--no-cache', action='store_true', help='ignore the API cache')
     ap.add_argument('--timeout', type=int, default=30)
     args = ap.parse_args()
 
@@ -278,9 +294,8 @@ def main():
     entities = apply_inheritance(entities)
     api_cache = {} if args.no_cache else load_cache()
 
-    results = []
-    for e in sorted(entities, key=lambda x: x['name']):
-        results.append(trace_entity(e, args.timeout, not args.no_api, api_cache))
+    results = [trace_entity(e, args.timeout, not args.no_api, api_cache)
+               for e in sorted(entities, key=lambda x: x['name'])]
     save_cache(api_cache)
 
     clusters = S.cluster(results)
@@ -295,44 +310,46 @@ def main():
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
-        print(f'本机唯一 skill 实体：{len(results)} 个（已按真实路径去重）\n')
-        print('来源聚类：')
+        print(f'Unique skill entities on this machine: {len(results)} '
+              f'(de-duplicated by realpath)\n')
+        print('Clusters by source:')
         for c in clusters:
-            print(f"  ● {c['label']} — {len(c['items'])} 个")
+            print(f"  * {c['label']} — {len(c['items'])}")
         if groups:
-            print('\n框架/应用内置（不由本工具更新）：')
+            print('\nBundled with an application/framework (not updated by this tool):')
             for g in groups:
-                print(f"  ○ {g['label']} — {g['count']} 个")
+                print(f"  - {g['label']} — {g['count']}")
 
         traceable = [r for r in results if r['update'] in ('current', 'outdated', 'unknown')]
         untraceable = [r for r in results if r['update'] == 'untraceable']
 
-        print(f'\n可溯源并已核对上游：{len(traceable)} 个')
+        print(f'\nTraceable, upstream checked: {len(traceable)}')
         for r in traceable:
-            mark = {'current': '✅ 无更新', 'outdated': '⬆️  有更新',
-                    'unknown': '❓ 无法确认'}[r['update']]
-            extra = f"（继承自 {r['inherited_from']}）" if r.get('inherited_from') else ''
-            print(f"  {mark}  {r['name']}{extra}")
-            print(f"          {r['detail']}  来源 {r['source'].get('url')}")
+            mark = {'current': 'OK     ', 'outdated': 'UPDATE ',
+                    'unknown': 'UNKNOWN'}[r['update']]
+            extra = f" (inherited from {r['inherited_from']})" if r.get('inherited_from') else ''
+            print(f"  [{mark}] {r['name']}{extra}")
+            print(f"            {r['detail']}  source {r['source'].get('url')}")
             if r.get('legit') == 'review':
                 for n in r.get('legit_notes', []):
-                    print(f"          ⚠️  {n}")
+                    print(f"            WARN: {n}")
 
-        print(f'\n找不到来源：{len(untraceable)} 个')
+        print(f'\nNo source found: {len(untraceable)}')
         by_kind = {}
         for r in untraceable:
             by_kind.setdefault(r['kind'], []).append(r)
         for k, items in sorted(by_kind.items()):
-            print(f"  · {k} — {len(items)} 个（{items[0]['detail']}）")
+            print(f"  - {k} — {len(items)} ({items[0]['detail']})")
         with_hints = [r for r in untraceable
                       if any(h['confidence'] == 'high' for h in r.get('hints', []))]
         if with_hints:
-            print(f'\n  自行寻找后找到【高可信】疑似来源的 {len(with_hints)} 个（未下载、未更新）：')
+            print(f'\n  Local search found a HIGH-confidence probable origin for '
+                  f'{len(with_hints)} of them (nothing downloaded, nothing updated):')
             for r in with_hints:
                 repos = sorted({h['repo'] for h in r['hints'] if h['confidence'] == 'high'})
-                print(f"    🔎 {r['name']} → {', '.join(repos)}")
+                print(f"    {r['name']} -> {', '.join(repos)}")
 
-        print('\n统计：' + '，'.join(f'{k} {v}' for k, v in sorted(counts.items())))
+        print('\nTotals: ' + ', '.join(f'{k} {v}' for k, v in sorted(counts.items())))
 
     need = counts.get('outdated', 0) or counts.get('unknown', 0)
     return 1 if need else 0

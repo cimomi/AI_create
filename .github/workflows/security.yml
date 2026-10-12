@@ -1,7 +1,9 @@
 name: Security
 
-# 服务端兜底：本地钩子可以 --no-verify 绕过，CI 不能。
-# 每次推送与 PR 都会重新扫描，包含全部历史。
+# Server-side backstop. Local hooks can be bypassed with --no-verify; CI cannot
+# be skipped. Note that this runs AFTER the push, so it detects and alerts
+# rather than preventing the leak itself — only GitHub Push Protection blocks
+# at push time. It re-scans on every push and pull request, history included.
 
 on:
   push:
@@ -14,13 +16,13 @@ permissions:
 
 jobs:
   secret-scan:
-    name: 密钥扫描（gitleaks）
+    name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          # 必须取全历史——增量浅克隆扫不到旧提交里的泄漏，
-          # 而"提交过又删掉"正是最容易被忽略的一种泄漏。
+          # Full history is required: a shallow clone cannot see a leak that
+          # was committed and later deleted, which is the easiest case to miss.
           fetch-depth: 0
       - name: gitleaks
         uses: gitleaks/gitleaks-action@v2
@@ -28,7 +30,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   repo-audit:
-    name: 仓库审计（绝对路径 / 凭证文件 / 体积）
+    name: Repository audit (absolute paths / credential files / size)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,18 +39,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: 运行审计
+      - name: Run audit
         run: python3 scripts/audit.py
 
   syntax-check:
-    name: Python 语法检查
+    name: Python syntax check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: 编译全部 Python 文件
+      - name: Compile all Python files
         run: |
           python3 -m compileall -q scripts skill-library-manager/tools skill-library-manager/skill-update-guard/scripts
-          echo "全部通过"
+          echo "all files compiled"

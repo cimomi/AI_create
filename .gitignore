@@ -1,14 +1,14 @@
-# 运行产物（工具运行会生成，其中可能含本机绝对路径）
+# Run artefacts (tools write these; they may contain absolute paths)
 health-report.json
 __pycache__/
 *.pyc
 
-# 编辑器与系统
+# Editors and OS
 .DS_Store
 .vscode/
 .idea/
 
-# 密钥与凭证：这些永远不该入库
+# Secrets and credentials: these must never be committed
 .env
 .env.*
 *.pem
@@ -17,7 +17,7 @@ __pycache__/
 .netrc
 .git-credentials
 
-# 备份与快照
+# Backups and snapshots
 update-backups/
 .recovery/
 *.local.json
