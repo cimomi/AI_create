@@ -207,7 +207,7 @@ def main():
             print(f'\n  ⚠️  {len(soft)} 项提示：')
             for f in soft[:10]:
                 print(f"     {f['where']} — {f['detail']}")
-        print('\n结论：' + ('不通过，已阻止推送' if hard else '通过'))
+        print('\n结论：' + ('不通过，已阻止本次操作' if hard else '通过'))
 
     return 1 if hard else 0
 
